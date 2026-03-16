@@ -1,0 +1,228 @@
+{
+  "main": {
+    "id": "eca0bc447f29d642",
+    "type": "split",
+    "children": [
+      {
+        "id": "f8a05ae58b07c857",
+        "type": "tabs",
+        "dimension": 66.71826625386997,
+        "children": [
+          {
+            "id": "8f09c92277090b17",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Теория вероятности/Гамма распределение.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Гамма распределение"
+            }
+          }
+        ]
+      },
+      {
+        "id": "2a84d3ca8bf8816a",
+        "type": "tabs",
+        "dimension": 33.28173374613003,
+        "children": [
+          {
+            "id": "188627f60298e21b",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Граф"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "5bde79f88294e65a",
+    "type": "split",
+    "children": [
+      {
+        "id": "7fefb3ee65880600",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "05ae60929a85eee9",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Файловый менеджер"
+            }
+          },
+          {
+            "id": "06ae19c0b618f5cd",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Поиск"
+            }
+          },
+          {
+            "id": "6a556f1a6ff529be",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Закладки"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "right": {
+    "id": "8e9dd45894969dbd",
+    "type": "split",
+    "children": [
+      {
+        "id": "7807889822c9f34e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b94d7452ae16df89",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Теория вероятности/Двойное гамма распределение.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Обратные ссылки для Двойное гамма распределение"
+            }
+          },
+          {
+            "id": "097ba4f8a95db37b",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Теория вероятности/Двойное гамма распределение.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Исходящие ссылки из Двойное гамма распределение"
+            }
+          },
+          {
+            "id": "0a4c735e86e239ea",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Теги"
+            }
+          },
+          {
+            "id": "c0234d6ae9098bd3",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Все свойства"
+            }
+          },
+          {
+            "id": "4ee5355506f23141",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Теория вероятности/Двойное гамма распределение.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Структура Двойное гамма распределение"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Меню быстрого перехода": false,
+      "graph:Граф": false,
+      "canvas:Создать новый холст": false,
+      "daily-notes:Сегодняшняя заметка": false,
+      "templates:Вставить шаблон": false,
+      "command-palette:Открыть палитру команд": false,
+      "bases:Создать новую базу": false
+    }
+  },
+  "active": "8f09c92277090b17",
+  "lastOpenFiles": [
+    "Теория вероятности/Двойное гамма распределение.md",
+    "Теория вероятности/История появления двойного гамма распределения из GPT.md",
+    "Теория вероятности/План подготовки к выполнению курсовой работы по теории вероятности.md",
+    "Теория вероятности/Что такое случайная величина и распределение вероятностей вообще..md",
+    "Теория вероятности/Гамма распределение.md",
+    "img/Pasted image 20260314215816.png",
+    "img/Pasted image 20260314215622.png",
+    "img/Pasted image 20260314215535.png",
+    "img/Pasted image 20260314215513.png",
+    "img/Pasted image 20260314215434.png",
+    "img/Pasted image 20260314215409.png",
+    "img/Pasted image 20260314215332.png",
+    "img/Pasted image 20260314215241.png",
+    "Теория вероятности/Зачем нужны плотность распределения и функция распределения, чем они отличаются.md",
+    "img/Pasted image 20260314213619.png",
+    "img/Pasted image 20260314213212.png",
+    "img",
+    "Теория вероятности",
+    "Без названия.canvas",
+    "Без названия.base",
+    "Добро пожаловать.md"
+  ]
+}
