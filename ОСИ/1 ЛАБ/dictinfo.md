@@ -17,34 +17,66 @@ const char* es_words[3] = {"manzana", "libro", "gato"}; // SPAIN words
 пока так.
 
 Number of words = длине словаря это похуй 
-а вот number of loaded words надо как-то найти. 
+а вот number of loaded word  просто найду по первому символу. 
 
-причем в доп задании надо это сделать бинарным поиском. 
-
-char turn_symbols[26] = {0}; //  массив с  символами (boot_letters был двоичным массивом)
+char turn_symbols[26] = {0}; // array turn_symbols 
 int turn_symbols_count = 0;
 
-void index_to_symbol(int index, int k) // перевод индекса в символ
+void index_to_symbol(int index, int k) // switch index to symbols 
 {
     turn_symbols[k] = 'a' + index;
+    turn_symbols_count++;
 }
 
-void find_turn_symbols()
+void find_turn_symbols() // scan boot_letters and if letter has true ==> turn to array turn_symbols 
 {
 	unsigned char* boot_letters = (unsigned char*)0x9000;
-	int k =0;
-	turn_symbols_count = 0;  
-  
-	for (int i = 0; i < 26; i++)  // отчистка на всякий случай
-	{  
-		turn_symbols[i] = 0;  
-	}
+	int k = 0;
+	turn_symbols_count = 0;
+
+    	for (int i = 0; i < 26; i++)
+    	{
+    	    turn_symbols[i] = 0;
+    	}
 	for (int i = 0; i<26; i++)
 	{
 		if (boot_letters[i] == 1) {index_to_symbol(i, k); k++;}
 	}
-	if (k < 26) // на всякий
+	if (k < 26)
     	{
         	turn_symbols[k] = 0;
     	}
+	
 }
+
+int letter_is_allowed(char c) // proverka true first symbol or not develop
+{
+    for (int i = 0; i < turn_symbols_count; i++)
+    {
+        if (turn_symbols[i] == c)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int number_of_loaded_words() // FIDN COUNT turn words
+{
+	int count = 0;
+	for (int i = 0; i<turn_symbols_count; i++)
+	{
+		for (int j =0; j<3; j++)
+		{
+			if (turn_symbols[i] == en_words[j][0])
+			{
+				count++;
+			}
+		}
+	}
+	return count;
+}
+
+теперь надо придумать как вывести число count тк %d не работает.
+
