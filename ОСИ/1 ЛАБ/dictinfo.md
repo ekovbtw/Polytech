@@ -80,3 +80,4 @@ int number_of_loaded_words() // FIDN COUNT turn words
 
 теперь надо придумать как вывести число count тк %d не работает.
 
+print_count(count_of_loaded_words); сделаем вызов фунции в dictinfo.
