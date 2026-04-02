@@ -82,7 +82,7 @@ int number_of_loaded_words() // FIDN COUNT turn words
 
 print_count(count_of_loaded_words); сделаем вызов фунции в dictinfo.
 
-void print_count(int count) // 
+void print_count(int count) // сама функция 
 {
 	if (count<0)
 	{
@@ -117,3 +117,42 @@ void print_count(int count) //
 	}
 	
 }
+
+обновим dictinfo
+
+void dictinfo() //develop
+{
+	int count_of_words = 3;
+	int count_of_loaded_words = 0;
+	count_of_loaded_words = number_of_loaded_words();
+	str_str("Dictionary: en -> es");
+	back_n();
+	str_str("Number of words: ");
+	print_count(count_of_words);
+	back_n();
+	find_turn_symbols();
+	str_str("Number of loaded words:");
+	print_count(count_of_loaded_words);
+	back_n();
+}
+
+добавим вызов dictinfo:
+
+void varity(char* name, unsigned char* boot_letters) // run different function
+{
+    if (str_check(name, "info"))
+    {
+        info(boot_letters);
+    }
+    else if (str_check(name, "dictinfo"))
+    {
+        dictinfo();
+    }
+    else
+    {
+        str_str("Not found");
+        back_n();
+    }
+}
+
+
