@@ -81,3 +81,39 @@ int number_of_loaded_words() // FIDN COUNT turn words
 теперь надо придумать как вывести число count тк %d не работает.
 
 print_count(count_of_loaded_words); сделаем вызов фунции в dictinfo.
+
+void print_count(int count) // 
+{
+	if (count<0)
+	{
+		put_point('-');
+		count = - count;
+	}
+	else if (count == 0)
+	{
+		put_point('0');
+	}
+	else if(count>999)
+	{
+		str_str("Error find count loaded words(>=1000)");
+	}
+	else 
+	{
+		char chislo[4];
+		int i = 0;
+		while (count>0)
+		{
+			int last = count%10; 
+			chislo[i] = '0' + last;
+			i++;
+			count = count/10;
+		}
+		while (i>0)
+		{
+			i--;
+			put_point(chislo[i]);
+		}
+		
+	}
+	
+}
