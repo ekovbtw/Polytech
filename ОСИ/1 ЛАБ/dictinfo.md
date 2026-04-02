@@ -1,0 +1,14 @@
+![[Pasted image 20260402145325.png]]
+void dictinfo()
+{
+	int number_of_words = 0;
+	int number_of_loaded_words = 0;
+	str_str("Dictionary: en -> es");
+	back_n();
+	str_str("Number of words: ");
+	back_n();
+	str_str("Number of loaded words:");
+	back_n();
+}
+
+теперь надо добавить словарь:
