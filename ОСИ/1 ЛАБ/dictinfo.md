@@ -12,6 +12,7 @@ void dictinfo()
 }
 
 теперь надо добавить словарь:
-const char* en_words[] = {"apple", "book", "cat"}; // ENG words
-const char* es_words[] = {"manzana", "libro", "gato"}; // SPAIN words 
+const char* en_words[3] = {"apple", "book", "cat"}; // ENG words
+const char* es_words[3] = {"manzana", "libro", "gato"}; // SPAIN words 
 пока так.
+
