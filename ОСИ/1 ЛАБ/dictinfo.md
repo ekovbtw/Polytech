@@ -156,3 +156,4 @@ void varity(char* name, unsigned char* boot_letters) // run different function
 }
 
 
+далее сделаем словарь на 500 слов с особыми буквами и проверим [[Словарь из 500 слов]]
