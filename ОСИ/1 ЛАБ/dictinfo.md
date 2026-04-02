@@ -16,3 +16,24 @@ const char* en_words[3] = {"apple", "book", "cat"}; // ENG words
 const char* es_words[3] = {"manzana", "libro", "gato"}; // SPAIN words 
 пока так.
 
+char turn_symbols[26] = {0}; //  массив с  символами (boot_letters был двоичным массивом)
+int turn_symbols_count = 0;
+
+void index_to_symbol(int index, int k) // перевод индекса в символ
+{
+    turn_symbols[k] = 'a' + index;
+}
+
+int find_turn_symbols()
+{
+	unsigned char* boot_letters = (unsigned char*)0x9000;
+	int k =0;
+	for (int i = 0; i<26; i++)
+	{
+		if (boot_letters[i] == 1) {index_to_symbol(i, k); k++;}
+	}
+	if (k < 26) // на всякий
+    	{
+        	turn_symbols[k] = 0;
+    	}
+}
