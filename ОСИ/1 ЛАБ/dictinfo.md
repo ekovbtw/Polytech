@@ -124,13 +124,13 @@ void dictinfo() //develop
 {
 	int count_of_words = 3;
 	int count_of_loaded_words = 0;
+	find_turn_symbols();
 	count_of_loaded_words = number_of_loaded_words();
 	str_str("Dictionary: en -> es");
 	back_n();
 	str_str("Number of words: ");
 	print_count(count_of_words);
 	back_n();
-	find_turn_symbols();
 	str_str("Number of loaded words:");
 	print_count(count_of_loaded_words);
 	back_n();
