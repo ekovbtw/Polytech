@@ -105,4 +105,47 @@ int binary_search(char* word)
 }
 
 допишем translate: 
+void translate(char* name) // func for translate
+{
+    char word[41] = {0}; // find word in fist array
+    int i = 0;
+    int j = 0;
 
+    while (name[i] != ' ' && name[i] != '\0')
+    {
+        i++;
+    }
+
+    while (name[i] == ' ')
+    {
+        i++;
+    }
+    if (name[i] == '\0')
+    {
+        str_str("Error: no word");
+        back_n();
+        return;
+    }
+
+    while (name[i] != '\0' && j < 40)
+    {
+        word[j] = name[i];
+        i++;
+        j++;
+    }
+
+    word[j] = '\0';
+    
+    int index_word = binary_search(word);
+    if (index_word == -1)
+    {
+    	str_str("Error a word ");
+    	str_str(word);
+    	str_str("is unknown");
+    	back_n();
+    	return; 
+    }
+    
+    str_str(es_words[index_word]);
+    
+}
