@@ -77,3 +77,31 @@ int str_cmp(const char* a, const char* b) // str_cmp
     return 1;
 }
 
+Далее сам бинарный поиск:
+
+int binary_search(char* word)
+{
+	int left = 0; 
+	int right = array_size - 1;
+	int mid = (left + right)/2;
+	if (str_cmp(word, en_words[mid]) == 0)
+	{
+		return mid;
+	}
+	while ((str_cmp(word, en_words[mid]) == -1 || str_cmp(word, en_words[mid]) == 1) && left <= right)
+	{
+		mid = (left + right)/2;
+		if (str_cmp(word, en_words[mid]) == -1)
+		{
+			right = mid-1;
+		}
+		else if (str_cmp(word, en_words[mid]) == 1) left = mid+1;
+		else 
+		{
+			return mid;
+		}
+	}
+	return -1;
+}
+
+
