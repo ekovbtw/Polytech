@@ -104,4 +104,5 @@ int binary_search(char* word)
 	return -1;
 }
 
+допишем translate: 
 
