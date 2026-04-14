@@ -1,0 +1,154 @@
+﻿#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define kol_vershin 32 // переменная для хранения количества вершин в графе
+
+int matrix_D[kol_vershin][kol_vershin] = { 0 }; // матрица для хранения расстояний
+int matrix_P[kol_vershin][kol_vershin] = { 0 }; // матрица для хранения промежуточных вершин
+
+void print_matrix_D(FILE* out); // отладочная функция для печати матрицы D на экран
+void print_matrix_P(FILE* out); // отладочная функция для печати матрицы P на экран
+
+void init_P_matrix() // функция для инициализации матрицы P
+{
+    for (int i = 0; i < kol_vershin; i++)
+    {
+        for (int j = 0; j < kol_vershin; j++)
+        {
+            matrix_P[i][j] = i+1; 
+        }
+    }
+}
+
+void algoritm_floid(FILE* out);
+
+
+int main()
+{
+	FILE* file = fopen("job_Var13.in", "r"); 
+    if (file == NULL)
+    {
+        printf("No find file\n");
+        return 1;
+    }
+    FILE* out = fopen("job_Var13.out", "w");
+    if (out == NULL)
+    {
+        printf("No create output file\n");
+        fclose(file);
+        fclose(out);
+        return 1;
+    }
+    
+	char buffer[100]; // буфер для чтения строк из файла
+
+    char skip[1024]; // пропустили
+    fgets(skip, sizeof(skip), file);
+
+	for (int i = 0; i < kol_vershin; i++) // цикл для чтения данных из файла и заполнения матрицы
+    {
+        for(int j = 0; j < kol_vershin; j++)
+        {
+            fscanf(file, "%s", buffer); // считываем данные из файла и сохраняем в матрицу
+
+            if (strcmp(buffer, "*") == 0)
+            {
+                matrix_D[i][j] = 999999; // если символ "*", то сохраняем 999999 в матрице
+            }
+
+            else
+            {
+                matrix_D[i][j] = atoi(buffer); // иначе сохраняем число, преобразованное из строки
+            }
+        }
+    }
+	//print_matrix_D();
+	init_P_matrix(); // инициализируем матрицу P
+    //print_matrix_P(); // печатаем матрицу P для проверки
+    algoritm_floid(out);
+    fclose(file);
+    fclose(out);
+    return 0;
+}
+
+void print_matrix_D(FILE* out)
+{
+    printf("D:\n");
+    fprintf(out, "D:\n");
+
+    for (int i = 0; i < kol_vershin; i++)
+    {
+        for (int j = 0; j < kol_vershin; j++)
+        {
+            if (matrix_D[i][j] == 999999)
+            {
+                printf("* ");
+                fprintf(out, "* ");
+            }
+            else
+            {
+                printf("%d ", matrix_D[i][j]);
+                fprintf(out, "%d ", matrix_D[i][j]);
+            }
+        }
+        printf("\n");
+        fprintf(out, "\n");
+    }
+}
+
+void print_matrix_P(FILE* out)
+{
+    printf("P:\n");
+    fprintf(out, "P:\n");
+
+    for (int i = 0; i < kol_vershin; i++)
+    {
+        for (int j = 0; j < kol_vershin; j++)
+        {
+            printf("%d ", matrix_P[i][j]);
+            fprintf(out, "%d ", matrix_P[i][j]);
+        }
+        printf("\n");
+        fprintf(out, "\n");
+    }
+}
+
+void algoritm_floid(FILE* out)
+{
+    for (int pointer = 0; pointer < kol_vershin; pointer++) // цикл для перебора всех вершин в качестве промежуточных --> pointer - индекс столбца
+    {
+
+        int pointer_new = pointer;
+        for (int i = 0; i < kol_vershin; i++) // i - строка pointer - столбец
+        {
+            if (matrix_D[i][pointer_new] != 999999) // если расстоянее до промежуточной вершины не равно беск или нулю
+            {
+                for (int j = 0; j < kol_vershin; j++) // проходимся по строке промежуточной вершины (чтобы понять куда можно идти из нее)
+                {
+                    if (matrix_D[pointer_new][j] == 999999) // не рассматриваем бесконечность из промежуточной вершины и нуль
+                    {
+                        continue;
+                    }
+
+                    else
+                    {
+                        int sum = matrix_D[i][pointer_new] + matrix_D[pointer_new][j]; // считаем новый вес (с учетом прохода через промежуточную вершину)
+                        int old_sum = matrix_D[i][j]; // старый вес
+
+                        if (sum < old_sum)
+                        {
+                            matrix_D[i][j] = sum; // обновляем вес
+                            matrix_P[i][j] = matrix_P[pointer_new][j]; // обновляем промежуточную вершину
+                        }
+                    }
+                }
+            }
+        }
+		printf("%d\n", pointer_new + 1); // отладка
+        fprintf(out, "%d\n", pointer_new + 1);
+        print_matrix_D(out); // отладка
+        print_matrix_P(out); // отладка
+
+    }
+}
