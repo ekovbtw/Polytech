@@ -95,6 +95,7 @@ void find_after_vertex(Description* vertex) // функция для поиск�
 
 int main()
 {
+
     setlocale(LC_ALL, "Russian");
     FILE* file = fopen("job_Var7.in", "r");
     if (file == NULL)
@@ -116,7 +117,11 @@ int main()
         while ((c = fgetc(file)) == ' '); // пропускаем пробелы
         if (c == '*')
         {
-            while (fgetc(file) != '\n'); // дочитываем строку до конца
+            while (1)
+            {
+                int ch = fgetc(file);
+                if (ch == '\n' || ch == EOF) break;
+            }
         }
 		else // ищем тех от кого зависит вершина
         {
@@ -125,11 +130,14 @@ int main()
             {
                 fscanf(file, "%d", &vertex_array[i].array_before_vertex[index]);
                 index++;
-                c = fgetc(file);
-                if (c == '\n' || c == EOF) // если конец строки или файла, выходим
-                {
-                    break;
-                }
+                do {
+                    c = fgetc(file);
+                } while (c == ' ');
+
+                if (c == '\n' || c == '\r' || c == EOF) break;
+
+                // это была цифра — возвращаем её обратно
+                ungetc(c, file);
             }
         }
         vertex_array[i].count_before_vertex = index;
@@ -140,21 +148,19 @@ int main()
 		find_after_vertex(&vertex_array[i]);
     }
 
+   
     while (1)
     {
         main_algorithm_1();
         int done_count = 0;
         for (int i = 0; i < COUNT_VERTEX; i++)
         {
-            if (done_vertex_array1[i] == 1)
-            {
-                done_count++;
-            }
+            if (done_vertex_array1[i] == 1) done_count++;
         }
-        if (done_count == COUNT_VERTEX) // если все вершины выполнены, выходим из цикла
-        {
-            break;
-        }
+        //printf("Прямой ход: посчитано %d из %d\n", done_count, COUNT_VERTEX);
+
+        if (done_count == COUNT_VERTEX) break;
+
     }
     while (1)
     {
