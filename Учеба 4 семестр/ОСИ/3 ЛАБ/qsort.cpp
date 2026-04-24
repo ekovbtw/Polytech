@@ -118,12 +118,11 @@ int main()
     if (threads == NULL)
     {
         printf("Не удалось выделить память под потоки\n");
-        fclose(file);
         close_all(threads);
         return 1;
     }
 
-	start_time = clock(); // шаг 7 - начало отсчета времени
+	
 
     for (int i = 0; i < global_count_threads; i++) // передаем их в функцию 
     {
@@ -131,7 +130,6 @@ int main()
         if (threads[i] == NULL)
         {
             printf("Не удалось создать поток %d\n", i);
-            fclose(file);
             for (int j = 0; j < i; j++)
             {
                 WaitForSingleObject(threads[j], INFINITE);
@@ -142,6 +140,7 @@ int main()
             return 1;
         }
     }
+    start_time = clock(); // шаг 7 - начало отсчета времени
     SetEvent(event);
 
     
