@@ -5,42 +5,32 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
-// порт A
-uint8_t ba = 3; // 0b00000011 - горят PA0 и PA1
+uint8_t ba = 3; // 0b00000011 
 uint8_t cur_a = 3;
-uint8_t ha = 2; // смещение на 2
+uint8_t ha = 2;
 uint8_t pa = 4; // каждые 4 тика сдвиг
-uint8_t da = 0; //с 0 позиции
+uint8_t da = 0; 
 
-// порт B
-uint8_t bb = 0x0F; //0x00001111 PB0, PB1, PB2, PB3 горят
+
+uint8_t bb = 0x0F; //0x00001111
 uint8_t cur_b = 0x0F;
 uint8_t hb = 1; //смещение на 1
-volatile int pb = 1; //изменяемое значение скорости
-uint8_t db = 0; //с 0 смещения
+volatile int pb = 1; 
+uint8_t db = 0; 
 
-//порт C
-uint8_t bc = 6;  // 0x00000110 PC1 и PC2
+
+uint8_t bc = 6;  // 0x00000110 
 uint8_t cur_c = 6;
 uint8_t hc = 1; // на один смещение
 uint8_t pc = 6; // каждые 6 тиков
 uint8_t dc = 1; // с 1 св
 
-// переменные режима и индикатора
+
 volatile int mode = 0; // 0 - работает, 1 - режим настройки
 //volatile int cur_param = 0; // 0 - > pb, 1 -> db, 2 -> bb.
-volatile unsigned int ind[4]= {0, 0, 0, 0};
+volatile unsigned int ind[4]= {0, 0, 0, 0}; 
 volatile int cur_ind = 0; // 0-3
 
-// переменные гирлянды
-volatile uint8_t garland_tick = 0; //счетчик тиков до следующего шага 
-volatile uint8_t count_a = 0, count_b = 0, count_c = 0; // счетчики шагов до следующего сдвига каждого порта 
-
-// переменные АЦП
-volatile unsigned int adc_value = 0;
-volatile uint8_t adc_ready = 0;
-
-// таблица символов
 const unsigned char numb[] = {
 	0b11000000, // 0  — индекс 0
 	0b11111001, // 1  — индекс 1
@@ -63,6 +53,15 @@ const unsigned char numb[] = {
 	0b11111111  // ' '— индекс 18
 };
 
+// переменные гирлянды
+volatile uint8_t garland_tick = 0; 
+volatile uint8_t count_a = 0, count_b = 0, count_c = 0; // счетчики шагов до следующего сдвига каждого порта 
+
+// переменные АЦП
+volatile unsigned int adc_value = 0;
+volatile uint8_t adc_ready = 0;
+
+
 void crcl(uint8_t *cur, int value){       // — циклический сдвиг (используется в init и таймере)
 	// if (value < 0) *cur = ((*cur >> -value) | (*cur << (8 + value))) & 0xFF;
 	*cur = ((*cur << value) | (*cur >> (8 - value))) & 0xFF;
@@ -74,18 +73,16 @@ void update_garland(void ){ // — вывод cur_a/b/c на порты
 	PORTC = cur_c;
 }
 
-void init_garlands(){ // — применяет начальные смещения da/db/dc
-	//for (int i = 0; i < da; i++) crcl(&cur_a, ha);
-	//for (int j = 0; j < db; j++) crcl(&cur_b, hb);
-	//for (int k = 0; k < dc; k++) crcl(&cur_c, hc);
+void init_garlands()
+{ 
 	
-	crcl(&cur_c, hc);
+	crcl(&cur_c, hc); // a and b uzhe настроены на начальные значения, нужно только c
 	update_garland();
 }
 
-void timer_init(void){    // — настройка таймеров T0, T1, T2
+void timer_init(void){   
 	TCCR0 = (1<<WGM01) | (1<<CS01) | (1<<CS00); // настраиваем режим СТС, 64
-	OCR0 = 154; // до какого числа считать, частота прерываний 8000000 / (64 * 155) ~ 800 Гц
+	OCR0 = 154; 
 	TIMSK |= (1<<OCIE0); // разрешить прерывание
 	
 	//используем Timer1 в 8-битном режиме Fast-PWM.
@@ -169,8 +166,8 @@ ISR(INT0_vect) {
 
 
 int main(){
-	timer_init(); // настраиваем 3 таймера
-	ADC_init(); // настраиваем АЦП
+	timer_init(); 
+	ADC_init();
 	
 	DDRA = 0xDF; //// PA5 вход (потенциометр), остальные выходы
 	DDRB = DDRC = 0xFF; // все выходы (гирлянда)
