@@ -1,3 +1,7 @@
+### Шаг 6 — main
+
+---
+
 #### Что копируешь из QSort без изменений
 
 - чтение файла, fscanf для global_count_threads, N и элементов массива
@@ -37,6 +41,4 @@ pthread_create(&threads[i], NULL, worker_thread, NULL)
 - отпускаешь mutex
 - удваиваешь current_size_buffer_array
 
-После цикла выставляешь merge_done = true и будишь все потоки через pthread_cond_broadcast чтобы они вышли из своих циклов.
-
----
+После цикла выставляешь merge_done = true и будишь все потоки через pthread_cond_broadcast чтобы они вышли из своих циклов
