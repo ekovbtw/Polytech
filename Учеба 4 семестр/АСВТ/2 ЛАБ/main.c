@@ -10,7 +10,7 @@
 
 volatile uint8_t mode  = 1; //текущий режим гирлянды 1 или 0
 volatile uint8_t state = 0; // текущее состояние 0 или 1 для PD4 
-volatile uint8_t y     = 0x55; // значение у для режима 3 
+volatile uint8_t y = 0x55; // значение у для режима 3 
 volatile uint16_t tick_count = 0; // счетчик тиков таймера до 200 
 volatile uint8_t need_update = 0; // флаг: обновить PORTD 
 volatile uint8_t need_eeprom_save = 0; // флаг: сохранить режим EEPROM 
@@ -105,7 +105,7 @@ ISR(INT1_vect)
 // считываем новое значение у с кнопок PORTC пока зажата PD7 
 void read_y_from_portc(void)
 {
-	_delay_ms(20); // ждем окончания дреюезга кноки PD7 
+	_delay_ms(20); 
 
 	while ((PINC & 0xFF) == 0) { // ждем нажатия хоть одной кнопки PORTC 
 		if (!(PIND & (1<<PD7))) return; // ждем отпускание PD7 - выходим без изменений 
@@ -114,10 +114,10 @@ void read_y_from_portc(void)
 	_delay_ms(120); //ждем пока нажмут все нужные кнопки 
 	y = PINC; //считываем комбинацию кнопок как новый у 
 
-	while ((PINC & 0xFF) != 0 && (PIND & (1<<PD7))); // ждем отпускание кнопки PORTC или PD7 
+	while ((PINC & 0xFF) != 0 && (PIND & (1<<PD7))); 
 
-	_delay_ms(20); //ждем окончания дребезга при отпускании 
-	need_update = 1; // обновить отображение с новым у 
+	_delay_ms(20); 
+	need_update = 1; 
 }
 
 int main(void)
@@ -132,7 +132,7 @@ int main(void)
 
 	mode = eeprom_load_mode(); // загружаем сохраненый режим из eeprom 
 	state = 0; // начальное состояние 0
-	y = 0x55; // начальное 0х055 по заданию 
+	y = 0x55; // начальное 0х55 по заданию 
 
 	MCUCR = (1<<ISC11)|(1<<ISC10)|(1<<ISC01)|(1<<ISC00);
 	GICR  = (1<<INT1)|(1<<INT0); // разрешить прерывания int0 и int1
@@ -142,13 +142,13 @@ int main(void)
 	update_output(); // выводим начальное состояние на порты 
 	sei(); // разрешаем прерывания глобально 
 
-	while (1) //беск
+	while (1) 
 	{
 		if (PIND & (1<<PD7)) // нажата кнопка 7 
 		{
 			TIMSK &= ~(1<<OCIE0); // останавливаем таймер 
 			PORTA  = 0x00; //гасим 
-			PORTB  = 0x00; //гасим 
+			PORTB  = 0x00; 
 
 			read_y_from_portc(); //считываем новое у с portc 
 
