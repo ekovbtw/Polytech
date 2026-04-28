@@ -4,141 +4,95 @@
 #include <Windows.h>
 #include <locale.h>
 #include <stdbool.h>
-
+#include <time.h>
+#define SUM_MAX (2147483647LL + 99999LL)
+#define SUM_MIN (-2147483648LL - 99999LL)
 #define LL long long
-#define COMB_SIZE 100
-#define MAX_SIGNS 20
+#define DEBUG_PRINT 0
+#define MAX_THREADS 64
 
-CRITICAL_SECTION task_cs;   // защищает раздачу задач и общий результат
-HANDLE task_sem;            // семафор, ограничивающий число одновременно работающих потоков
-HANDLE start_event;         // событие старта
+CRITICAL_SECTION task_cs;
+HANDLE start_sem;
 
-int global_next_task_index = 0;    // индекс не пройденной комбинации
-int global_count_combination = 0;  // всего комбинаций
-int global_result = 0;      // общий ответ
-int global_count_An = 0;    // количество чисел
-int* global_Array_An = NULL; // массив чисел
-LL global_S = 0;            // целевая сумма
+LL global_next_task_index = 0;
+LL global_count_combination = 0;
+int global_result = 0;
+int global_count_An = 0;
+int* global_Array_An = NULL;
+LL global_S = 0;
 
+LL global_checked[MAX_THREADS];
+LL global_found[MAX_THREADS];
 
-typedef struct Combination
-{
-    int binary_sign[MAX_SIGNS];
-    bool complete;
-} Combination;
-
-Combination global_task[COMB_SIZE]; // массив для хранения всех комбинаций 
-
-void include_to_combination(int digit, int comb_index, int bit_index)
-{
-    global_task[comb_index].binary_sign[bit_index] = digit;
-}
 
 bool init_combination()
 {
-    int count_signs = global_count_An - 1;         // количество мест под +/-
-    if (global_count_An - 1 > 20)
+    int count_signs = global_count_An - 1;
+
+    if (count_signs <= 0)
     {
-        printf("Слишком много знаков для binary_sign[20]\n");
+        printf("Недостаточно чисел\n");
         return false;
     }
 
-    //printf("Количество комбинаций: %d\n", global_count_combination);
-
-    // на всякий случай проверка
-    if (global_count_combination > COMB_SIZE)
-    {
-        printf("Слишком много комбинаций для массива global_task\n");
-        return false;
-    }
-
-    // сначала очистим массив
-    for (int i = 0; i < global_count_combination; i++)
-    {
-        for (int j = 0; j < count_signs; j++)
-        {
-            global_task[i].binary_sign[j] = 0;
-        }
-        global_task[i].complete = false;
-    }
-
-    // генерируем все комбинации
-    for (int i = 0; i < global_count_combination; i++)
-    {
-        for (int j = 0; j < count_signs; j++)
-        {
-            int digit = (i >> j) & 1;
-
-            include_to_combination(digit, i, count_signs - 1 - j);
-        }
-    }
-
-    // отладка
-    for (int i = 0; i < global_count_combination; i++)
-    {
-        for (int j = 0; j < count_signs; j++)
-        {
-            //printf("%d ", global_task[i].binary_sign[j]);
-        }
-        //printf("| complete = %d\n", global_task[i].complete);
-    }
-
+    global_count_combination = 1LL << count_signs;
     return true;
 }
 
 
-bool check_combination(int task_index) // проверка комбинации на выполнение условия
+bool check_combination(LL task_index)
 {
-
     int count_signs = global_count_An - 1;
+    LL sum = (LL)global_Array_An[0];
 
-    int* comb = global_task[task_index].binary_sign;
-    LL sum = global_Array_An[0]; // начинаем с первого числа
     for (int i = 0; i < count_signs; i++)
     {
-        if (comb[i] == 1)
-        {
-            sum += global_Array_An[i + 1]; // ставим +
-        }
+        int digit = (task_index >> (count_signs - 1 - i)) & 1;
+        if (digit == 1)
+            sum += (LL)global_Array_An[i + 1];
         else
-        {
-            sum -= global_Array_An[i + 1]; // ставим -
-        }
+            sum -= (LL)global_Array_An[i + 1];
+
+        if (sum > SUM_MAX || sum < SUM_MIN)
+            return false;
     }
-    global_task[task_index].complete = true; // помечаем комбинацию как проверенную
+
     if (sum == global_S)
     {
-        //printf("Комбинация %d подходит\n", task_index); // отладка
-        return true; // комбинация подходит
+#if DEBUG_PRINT
+        EnterCriticalSection(&task_cs);
+        printf("Решение: %d", global_Array_An[0]);
+        for (int i = 0; i < count_signs; i++)
+        {
+            int digit = (task_index >> (count_signs - 1 - i)) & 1;
+            printf(" %c %d", digit ? '+' : '-', global_Array_An[i + 1]);
+        }
+        printf(" = %lld\n", global_S);
+        LeaveCriticalSection(&task_cs);
+#endif
+        return true;
     }
-    else
-    {
-
-        //printf("Комбинация %d не подходит\n", task_index); // отладка
-        return false; // комбинация не подходит
-    }
+    return false;
 }
 
 
 DWORD WINAPI worker_thread(LPVOID param)
 {
-    // ждём сигнал старта алгоритма
-    WaitForSingleObject(start_event, INFINITE);
+    int idx = (int)(size_t)param;
+    int local_result = 0;
+    LL local_checked = 0;
+
+    WaitForSingleObject(start_sem, INFINITE);
 
     while (1)
     {
-        int task_index;
+        LL task_index;
 
-        // Ограничиваем количество одновременно работающих потоков
-        WaitForSingleObject(task_sem, INFINITE);
-
-        // Безопасно забираем следующую задачу
         EnterCriticalSection(&task_cs);
 
         if (global_next_task_index >= global_count_combination)
         {
             LeaveCriticalSection(&task_cs);
-            ReleaseSemaphore(task_sem, 1, NULL);
             break;
         }
 
@@ -147,16 +101,21 @@ DWORD WINAPI worker_thread(LPVOID param)
 
         LeaveCriticalSection(&task_cs);
 
-        // Проверяем конкретную комбинацию
         if (check_combination(task_index))
-        {
-            EnterCriticalSection(&task_cs);
-            global_result++;
-            LeaveCriticalSection(&task_cs);
-        }
+            local_result++;
 
-        ReleaseSemaphore(task_sem, 1, NULL);
+        local_checked++;
     }
+
+    EnterCriticalSection(&task_cs);
+    global_result += local_result;
+    LeaveCriticalSection(&task_cs);
+
+    global_checked[idx] = local_checked;
+    global_found[idx] = local_result;
+
+    printf("Поток %d завершился: проверено %lld, найдено %d\n",
+        idx, local_checked, local_result);
 
     return 0;
 }
@@ -172,19 +131,13 @@ int main()
         return 1;
     }
 
-    int count_threads = 0; // количество потоков
+    int count_threads = 0;
 
     fscanf(file, "%d", &count_threads);
     fscanf(file, "%d", &global_count_An);
 
-    // инициализация массива чисел из файла
-    global_Array_An = (int*)malloc(global_count_An * sizeof(int)); // массив где хранятся числа
-    if (global_Array_An == NULL)
-    {
-        printf("Не удалось выделить память под массив чисел\n");
-        fclose(file);
-        return 1;
-    }
+    global_Array_An = (int*)malloc(global_count_An * sizeof(int));
+    
 
     for (int i = 0; i < global_count_An; i++)
     {
@@ -194,8 +147,6 @@ int main()
     fscanf(file, "%lld", &global_S);
     fclose(file);
 
-    global_count_combination = 1 << (global_count_An - 1); // инициализируем массив комбинаций
-
     if (!init_combination())
     {
         free(global_Array_An);
@@ -204,74 +155,42 @@ int main()
 
     InitializeCriticalSection(&task_cs);
 
-    task_sem = CreateSemaphore(NULL, count_threads, count_threads, NULL);
-    if (task_sem == NULL)
+    start_sem = CreateSemaphore(NULL, 0, count_threads, NULL);
+
+    HANDLE* threads = (HANDLE*)malloc(count_threads * sizeof(HANDLE));
+
+    for (int i = 0; i < count_threads; i++)
     {
-        printf("Не удалось создать семафор\n");
-        DeleteCriticalSection(&task_cs);
-        free(global_Array_An);
-        return 1;
+        threads[i] = CreateThread(NULL, 0, worker_thread, (LPVOID)(size_t)i, 0, NULL);
     }
 
-    // создаём событие старта
-    start_event = CreateEvent(NULL, TRUE, FALSE, NULL);
-    if (start_event == NULL)
+    clock_t start_time = clock();
+
+    ReleaseSemaphore(start_sem, count_threads, NULL);
+
+    while (1)
     {
-        printf("Не удалось создать start_event\n");
-        CloseHandle(task_sem);
-        DeleteCriticalSection(&task_cs);
-        free(global_Array_An);
-        return 1;
+        DWORD res = WaitForMultipleObjects(count_threads, threads, TRUE, 1000);
+        if (res != WAIT_TIMEOUT)
+            break;
+
+        EnterCriticalSection(&task_cs);
+        //printf("Прогресс: %lld / %lld\n", global_next_task_index, global_count_combination);
+        LeaveCriticalSection(&task_cs);
     }
 
-    HANDLE* threads = (HANDLE*)malloc(count_threads * sizeof(HANDLE)); // создаем потоки
-    if (threads == NULL)
+    clock_t end_time = clock();
+    double elapsed_ms = (double)(end_time - start_time) / CLOCKS_PER_SEC * 1000.0;
+
+    printf("\n--- Статистика потоков ---\n");
+    for (int i = 0; i < count_threads; i++)
     {
-        printf("Не удалось выделить память под потоки\n");
-        CloseHandle(start_event);
-        CloseHandle(task_sem);
-        DeleteCriticalSection(&task_cs);
-        free(global_Array_An);
-        return 1;
+        printf("Поток %d: проверено %lld, найдено %lld\n",
+            i, global_checked[i], global_found[i]);
     }
+    printf("Итого решений: %d\n", global_result);
+    printf("Время: %.3f мс\n", elapsed_ms);
 
-    for (int i = 0; i < count_threads; i++) // передаем их в функцию 
-    {
-        threads[i] = CreateThread(NULL, 0, worker_thread, NULL, 0, NULL);
-        if (threads[i] == NULL)
-        {
-            printf("Не удалось создать поток %d\n", i);
-
-            for (int j = 0; j < i; j++)
-            {
-                WaitForSingleObject(threads[j], INFINITE);
-                CloseHandle(threads[j]);
-            }
-
-            free(threads);
-            CloseHandle(start_event);
-            CloseHandle(task_sem);
-            DeleteCriticalSection(&task_cs);
-            free(global_Array_An);
-            return 1;
-        }
-    }
-
-    // ---- старт замера времени ----
-    LARGE_INTEGER freq, t_start, t_end;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&t_start);
-
-    SetEvent(start_event); // отпускаем потоки
-
-    WaitForMultipleObjects(count_threads, threads, TRUE, INFINITE); // ожидание
-
-    QueryPerformanceCounter(&t_end);
-
-    double elapsed_ms = (double)(t_end.QuadPart - t_start.QuadPart) * 1000.0 / freq.QuadPart;
-   
-
-    // запись output.txt
     FILE* out = fopen("output.txt", "w");
     if (out != NULL)
     {
@@ -280,27 +199,33 @@ int main()
         fprintf(out, "%d\n", global_result);
         fclose(out);
     }
+    else
+    {
+		printf("Не удалось открыть output.txt для записи\n");
+        fclose(out);
+    }
 
-    // запись time.txt
+
     FILE* t = fopen("time.txt", "w");
     if (t != NULL)
     {
         fprintf(t, "%.3f", elapsed_ms);
         fclose(t);
     }
+    else
+    {
+        printf("Не удалось открыть time.txt для записи\n");
+        fclose(t);
+    }
 
-    for (int i = 0; i < count_threads; i++) // освобождение потоков
+    for (int i = 0; i < count_threads; i++)
     {
         CloseHandle(threads[i]);
     }
 
     free(threads);
-    CloseHandle(start_event);
-    CloseHandle(task_sem);
+    CloseHandle(start_sem);
     DeleteCriticalSection(&task_cs);
-
-    printf("%d\n", global_result);
-
     free(global_Array_An);
     return 0;
 }
