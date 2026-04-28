@@ -1,4 +1,4 @@
-### merge_sort_2(int left, int right, int mid)
+ ### merge_sort_2(int left, int right, int mid)
 
 Сортирует или сливает кусок global_array от left до right включительно.
 
