@@ -27,7 +27,7 @@ typedef struct
     bool was_control;
     bool was_do;
     int phil_fork_count;
-    long wait_since; // D7 - время когда начал ждать
+    long wait_since;
     sem_t phil_sema;
     bool has_forks;
 
@@ -45,7 +45,7 @@ void clear_phil_struct()
         phil_array[i].phil_fork_count = 0;
         phil_array[i].was_do = SLEEP;
         phil_array[i].was_control = UN_CONTROL;
-        phil_array[i].wait_since = 0; // D7
+        phil_array[i].wait_since = 0;
         phil_array[i].has_forks = false;
     }
 }
@@ -114,12 +114,6 @@ void* worker_control(void* param)
                 idx++;
                 count_eat++;
             }
-            else if (phil_array[i].was_do == SLEEP && phil_array[i].has_forks)
-            {
-                global_count_fork[i] = FREE;
-                global_count_fork[(i + 1) % COUNT_PHIL] = FREE;
-                phil_array[i].has_forks = false;
-            }
             sem_post(&control_phil.phil_sema);
         }
         for (int i = 0; i < count_eat - 1; i++)
@@ -170,7 +164,6 @@ void* worker_phil(void* param)
         clock_gettime(CLOCK_MONOTONIC, &now);
         elapsed = (now.tv_sec - start_time.tv_sec) * 1000 +
             (now.tv_nsec - start_time.tv_nsec) / 1000000;
-        int idx = (int)(size_t)param;
 
         struct timespec ts;
         ts.tv_sec = array_for_total_and_phil[PHIL] / 1000;
@@ -188,27 +181,31 @@ void* worker_phil(void* param)
 
         sem_wait(&control_phil.phil_sema);
         phil_array[idx].was_do = EAT;
-        phil_array[idx].wait_since = elapsed; // D7
+        phil_array[idx].wait_since = elapsed;
         sem_post(&control_phil.phil_sema);
-        print_state(idx + 1, 'T', 'E');
         sem_post(&control_sema);
 
         sem_wait(&phil_array[idx].phil_sema);
         if (!running)
         {
-            print_state(idx + 1, 'E', 'T');
+            // вилки не получили — освобождать нечего
             phil_array[idx].was_do = SLEEP;
             break;
         }
+        print_state(idx + 1, 'T', 'E');
 
         nanosleep(&ts, NULL);
 
+        // освобождаем вилки здесь, пока держим семафор
         sem_wait(&control_phil.phil_sema);
+        global_count_fork[idx] = FREE;
+        global_count_fork[(idx + 1) % COUNT_PHIL] = FREE;
+        phil_array[idx].has_forks = false;
         phil_array[idx].was_do = SLEEP;
         sem_post(&control_phil.phil_sema);
+
         print_state(idx + 1, 'E', 'T');
         sem_post(&control_sema);
-
     }
     sem_wait(&control_phil.phil_sema);
     bool was_eating = (phil_array[idx].was_do == EAT);
