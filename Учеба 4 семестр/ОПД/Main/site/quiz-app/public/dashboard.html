@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Панель управления — QuizMaster</title>
+  <title>Панель управления — PolyTest</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -126,10 +126,10 @@
           <div class="card-header">
             <h2 class="card-title">Недавние попытки</h2>
           </div>
-          <div class="empty-state">
-            <div class="empty-icon">📋</div>
-            <h3>Ещё нет попыток</h3>
-            <p>Пройдите тест, и он появится здесь</p>
+          <div id="student-history">
+            <div class="empty-state">
+              <div class="loading">Загрузка…</div>
+            </div>
           </div>
         </div>
       </div>
@@ -166,6 +166,7 @@
     } else {
       document.getElementById('student-view').classList.remove('d-none');
       document.getElementById('student-name').textContent = user.username;
+      loadStudentHistory();
       // pre-fill code from URL
       const urlCode = new URLSearchParams(location.search).get('code');
       if (urlCode) {
@@ -266,6 +267,44 @@
         prev.classList.remove('d-none');
       } catch (err) {
         showAlert(alert, err.message);
+      }
+    }
+
+    // ── История студента ──
+    async function loadStudentHistory() {
+      const wrap = document.getElementById('student-history');
+      try {
+        const subs = await API.get('/api/student/submissions');
+        if (!subs.length) {
+          wrap.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">📋</div>
+              <h3>Ещё нет попыток</h3>
+              <p>Пройдите тест, и он появится здесь</p>
+            </div>`;
+          return;
+        }
+        wrap.innerHTML = subs.map(s => {
+          const pct  = s.total_questions ? Math.round(s.score / s.total_questions * 100) : 0;
+          const cls  = scorePillClass(s.score, s.total_questions);
+          const link = s.show_results ? `<a href="/results.html?id=${s.id}" class="btn btn-secondary btn-sm">Подробнее</a>` : '';
+          return `
+            <div class="test-card" style="cursor:default;">
+              <div class="test-card-code" style="background:var(--blue-dark);color:#fff;font-size:1.1rem;">
+                ${escHtml(s.code)}
+              </div>
+              <div class="test-card-info">
+                <div class="test-card-title">${escHtml(s.title)}</div>
+                <div class="test-card-meta">
+                  <span>📅 ${fmtDate(s.completed_at)}</span>
+                  <span class="score-pill ${cls}">${s.score} / ${s.total_questions} &nbsp; ${pct}%</span>
+                </div>
+              </div>
+              <div>${link}</div>
+            </div>`;
+        }).join('');
+      } catch (err) {
+        wrap.innerHTML = `<div class="empty-state"><p class="text-gray">Не удалось загрузить историю</p></div>`;
       }
     }
 

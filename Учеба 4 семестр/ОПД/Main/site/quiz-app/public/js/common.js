@@ -100,7 +100,10 @@ function renderNavbar() {
   const user = Auth.getUser();
   nav.innerHTML = `
     <div class="navbar-inner container">
-      <a href="${user ? '/dashboard.html' : '/'}" class="navbar-logo">Quiz<span>Master</span></a>
+      <a href="${user ? '/dashboard.html' : '/'}" class="navbar-logo">
+        <img src="/images/logo.png" class="navbar-logo-img" alt="PolyTest">
+        <span class="navbar-logo-text">Poly<span>Test</span></span>
+      </a>
       <nav class="navbar-nav">
         ${user ? `
           <div class="navbar-user">

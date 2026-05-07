@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- SPbPU brand green background -->
+  <rect width="100" height="100" rx="18" fill="#48A830"/>
+
+  <!-- Pi symbol: top horizontal bar -->
+  <rect x="11" y="18" width="78" height="14" rx="4" fill="white"/>
+
+  <!-- Left leg — wide (starts at left edge of top bar) -->
+  <rect x="11" y="30" width="28" height="52" rx="4" fill="white"/>
+
+  <!-- Right leg — narrower (starts at right edge of top bar) -->
+  <rect x="67" y="30" width="16" height="52" rx="4" fill="white"/>
+</svg>

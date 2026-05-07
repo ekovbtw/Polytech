@@ -86,14 +86,32 @@ h3 { font-size: 1.25rem; }
   height: 72px;
 }
 .navbar-logo {
-  font-family: var(--font-heading);
-  font-size: 1.6rem;
-  color: var(--green);
+  display: flex;
+  align-items: center;
+  gap: 10px;
   text-decoration: none;
-  letter-spacing: -0.5px;
+  flex-shrink: 0;
 }
-.navbar-logo:hover { text-decoration: none; opacity: 0.9; }
-.navbar-logo span { color: var(--almost-black); }
+.navbar-logo:hover { text-decoration: none; opacity: 0.88; }
+.navbar-logo-img {
+  height: 40px;
+  width: 40px;
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.navbar-logo-text {
+  font-family: var(--font-heading);
+  font-size: 1.55rem;
+  color: var(--green);
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.navbar-logo-text span { color: var(--almost-black); }
+@media (max-width: 480px) {
+  .navbar-logo-img  { height: 32px; width: 32px; }
+  .navbar-logo-text { font-size: 1.3rem; }
+}
 .navbar-nav {
   display: flex;
   align-items: center;

@@ -392,6 +392,20 @@ app.get('/api/submissions/:id', (req, res) => {
   res.json({ ...sub, answers: detail });
 });
 
+// ─────────────────── STUDENT HISTORY ───────────────────
+app.get('/api/student/submissions', auth, (req, res) => {
+  const subs = db.prepare(`
+    SELECT s.id, s.score, s.total_questions, s.completed_at, s.student_name,
+           t.title, t.code, t.show_results
+    FROM submissions s
+    JOIN tests t ON s.test_id = t.id
+    WHERE s.user_id = ?
+    ORDER BY s.completed_at DESC
+    LIMIT 50
+  `).all(req.user.id);
+  res.json(subs);
+});
+
 // ─────────────────── RESULTS (teacher) ───────────────────
 app.get('/api/tests/:id/results', auth, teacherOnly, (req, res) => {
   const test = db.prepare('SELECT * FROM tests WHERE id = ? AND teacher_id = ?').get(req.params.id, req.user.id);

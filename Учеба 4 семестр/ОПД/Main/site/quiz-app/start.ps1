@@ -39,11 +39,15 @@ Write-Host "  OK -- server is listening on http://localhost:3000" -ForegroundCol
 Write-Host "  [2/2] Opening SSH tunnel via localhost.run..." -ForegroundColor Yellow
 
 $keyPath = "$env:USERPROFILE\.ssh\id_rsa"
-$logOut  = [System.IO.Path]::Combine($env:TEMP, "qm_tunnel_out.txt")
-$logErr  = [System.IO.Path]::Combine($env:TEMP, "qm_tunnel_err.txt")
 
-if (Test-Path $logOut) { Remove-Item $logOut -Force }
-if (Test-Path $logErr) { Remove-Item $logErr -Force }
+# Resolve TEMP to full Unicode path (avoids 8.3 short-path bug with Cyrillic usernames)
+$tempDir = (Get-Item $env:TEMP -ErrorAction SilentlyContinue).FullName
+if (-not $tempDir) { $tempDir = $env:TEMP }
+$logOut  = Join-Path $tempDir "qm_tunnel_out.txt"
+$logErr  = Join-Path $tempDir "qm_tunnel_err.txt"
+
+Remove-Item $logOut -Force -ErrorAction SilentlyContinue
+Remove-Item $logErr -Force -ErrorAction SilentlyContinue
 
 $sshArgs = @(
     "-i", $keyPath,
