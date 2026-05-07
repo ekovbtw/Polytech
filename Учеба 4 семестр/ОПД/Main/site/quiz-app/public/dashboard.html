@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Панель управления — QuizMaster</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <!-- Онбординг для нового преподавателя -->
+  <div class="onboard-overlay d-none" id="onboard-overlay">
+    <div class="onboard-card">
+      <div class="onboard-icon">🎉</div>
+      <h2>Добро пожаловать!</h2>
+      <p>Вы зарегистрировались как <strong>преподаватель</strong>. Вот как начать:</p>
+      <div class="onboard-steps">
+        <div class="onboard-step">
+          <div class="onboard-num">1</div>
+          <div>Нажмите <strong>«Создать тест»</strong> — кнопка с жёлтым значком на странице</div>
+        </div>
+        <div class="onboard-step">
+          <div class="onboard-num">2</div>
+          <div>Добавьте вопросы и варианты ответов, отметьте правильные</div>
+        </div>
+        <div class="onboard-step">
+          <div class="onboard-num">3</div>
+          <div>Настройте параметры: пароль, перемешивание, анонимность</div>
+        </div>
+        <div class="onboard-step">
+          <div class="onboard-num">4</div>
+          <div>Скопируйте <strong>6-символьный код</strong> и отправьте студентам</div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="closeOnboard()">Понятно, начнём!</button>
+    </div>
+  </div>
+
+  <main class="page-content">
+    <div class="container">
+
+      <!-- ──────────── ПРЕПОДАВАТЕЛЬ ──────────── -->
+      <div id="teacher-view" class="d-none">
+        <div class="dashboard-header">
+          <div>
+            <div class="dashboard-greeting">Привет, <span id="teacher-name">...</span>! 👋</div>
+            <p class="text-gray mt-8">Управляйте своими тестами</p>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <div class="hint-wrapper" id="create-hint-wrapper">
+              <a href="/create-test.html" class="btn btn-primary" id="create-btn">
+                ➕ Создать тест
+              </a>
+              <span class="hint-badge d-none" id="hint-badge" title="">!</span>
+              <div class="hint-tooltip" id="hint-tooltip">Начните отсюда! Создайте первый тест</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-row" id="stats-row">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-tests">—</div>
+            <div class="stat-label">Тестов создано</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-submissions">—</div>
+            <div class="stat-label">Всего попыток</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-questions">—</div>
+            <div class="stat-label">Вопросов всего</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Мои тесты</h2>
+            <a href="/create-test.html" class="btn btn-secondary btn-sm">+ Новый тест</a>
+          </div>
+          <div id="tests-list">
+            <div class="empty-state">
+              <div class="loading">Загрузка...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ──────────── СТУДЕНТ ──────────── -->
+      <div id="student-view" class="d-none">
+        <div class="dashboard-header">
+          <div>
+            <div class="dashboard-greeting">Привет, <span id="student-name">...</span>! 🎓</div>
+            <p class="text-gray mt-8">Введите код теста, чтобы начать</p>
+          </div>
+        </div>
+
+        <div class="card mb-24">
+          <h3 style="font-family:var(--font-heading); margin-bottom:16px;">Найти тест по коду</h3>
+          <div class="search-box" style="max-width:100%;">
+            <input id="test-code-input" type="text" maxlength="6"
+              placeholder="Введите код теста (например: ABC123)"
+              oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+            <button class="btn btn-primary" onclick="findTest()">Найти</button>
+          </div>
+          <div id="test-find-alert" class="alert mt-16"></div>
+          <div id="test-preview" class="d-none" style="margin-top:16px;">
+            <div class="test-card" style="cursor:default;">
+              <div class="test-card-code" id="preview-code">——</div>
+              <div class="test-card-info">
+                <div class="test-card-title" id="preview-title">—</div>
+                <div class="test-card-meta">
+                  <span id="preview-questions">—</span>
+                  <span id="preview-badges"></span>
+                </div>
+                <div id="preview-desc" class="text-gray text-sm mt-8"></div>
+              </div>
+              <div>
+                <a id="preview-link" href="#" class="btn btn-primary">Начать тест →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Недавние попытки</h2>
+          </div>
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h3>Ещё нет попыток</h3>
+            <p>Пройдите тест, и он появится здесь</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Модал подтверждения удаления -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal">
+      <h3>Удалить тест?</h3>
+      <p class="text-gray">Это действие нельзя отменить. Все результаты тоже будут удалены.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">Отмена</button>
+        <button class="btn btn-danger" id="confirm-delete-btn" onclick="confirmDelete()">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw new Error('not auth');
+    renderNavbar();
+
+    const user = Auth.getUser();
+    let deleteTargetId = null;
+
+    // ── Показ нужного вида ──
+    if (user.role === 'teacher') {
+      document.getElementById('teacher-view').classList.remove('d-none');
+      document.getElementById('teacher-name').textContent = user.username;
+      loadTeacherTests();
+      if (user.is_new) showOnboard();
+    } else {
+      document.getElementById('student-view').classList.remove('d-none');
+      document.getElementById('student-name').textContent = user.username;
+      // pre-fill code from URL
+      const urlCode = new URLSearchParams(location.search).get('code');
+      if (urlCode) {
+        document.getElementById('test-code-input').value = urlCode.toUpperCase();
+        findTest();
+      }
+    }
+
+    // ── Онбординг ──
+    function showOnboard() {
+      document.getElementById('onboard-overlay').classList.remove('d-none');
+      const badge = document.getElementById('hint-badge');
+      badge.classList.remove('d-none');
+    }
+    function closeOnboard() {
+      document.getElementById('onboard-overlay').classList.add('d-none');
+      API.post('/api/auth/onboarded').catch(() => {});
+      // update local user
+      const u = Auth.getUser();
+      u.is_new = 0;
+      localStorage.setItem('qm_user', JSON.stringify(u));
+    }
+
+    // ── Загрузка тестов преподавателя ──
+    async function loadTeacherTests() {
+      try {
+        const tests = await API.get('/api/tests');
+        const totalSubs = tests.reduce((s, t) => s + t.submission_count, 0);
+        const totalQs   = tests.reduce((s, t) => s + t.question_count, 0);
+        document.getElementById('stat-tests').textContent       = tests.length;
+        document.getElementById('stat-submissions').textContent = totalSubs;
+        document.getElementById('stat-questions').textContent   = totalQs;
+
+        const list = document.getElementById('tests-list');
+        if (!tests.length) {
+          list.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">📝</div>
+              <h3>Тестов пока нет</h3>
+              <p>Нажмите «Создать тест», чтобы добавить первый</p>
+              <a href="/create-test.html" class="btn btn-primary mt-16">➕ Создать тест</a>
+            </div>`;
+          return;
+        }
+
+        list.innerHTML = tests.map(t => `
+          <div class="test-card" id="tc-${t.id}">
+            <div class="test-card-code" onclick="copyToClipboard('${t.code}','Код скопирован!')" title="Нажмите, чтобы скопировать код" style="cursor:pointer;">
+              ${t.code}
+            </div>
+            <div class="test-card-info">
+              <div class="test-card-title">${escHtml(t.title)}</div>
+              <div class="test-card-meta">
+                <span>📋 ${t.question_count} вопр.</span>
+                <span>👥 ${t.submission_count} попыток</span>
+                ${t.password ? '<span>🔒 Пароль</span>' : ''}
+                ${t.is_anonymous ? '<span>👤 Анон.</span>' : ''}
+                ${t.shuffle_questions ? '<span>🔀 Перемешан</span>' : ''}
+                <span class="text-gray">📅 ${fmtDate(t.created_at)}</span>
+              </div>
+            </div>
+            <div class="test-card-actions">
+              <a href="/test-results.html?id=${t.id}" class="btn btn-secondary btn-sm" title="Результаты">📊 Итоги</a>
+              <a href="/create-test.html?id=${t.id}" class="btn btn-secondary btn-sm" title="Редактировать">✏️</a>
+              <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${t.id})" title="Удалить">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // ── Поиск теста (студент) ──
+    async function findTest() {
+      const code  = document.getElementById('test-code-input').value.trim().toUpperCase();
+      const alert = document.getElementById('test-find-alert');
+      const prev  = document.getElementById('test-preview');
+      hideAlert(alert);
+      prev.classList.add('d-none');
+
+      if (code.length < 1) { showAlert(alert, 'Введите код теста'); return; }
+
+      try {
+        const test = await API.get(`/api/public/tests/${code}`);
+        document.getElementById('preview-code').textContent  = test.code;
+        document.getElementById('preview-title').textContent = test.title;
+        document.getElementById('preview-questions').textContent = `📋 ${test.question_count} вопросов`;
+
+        const badges = [];
+        if (test.has_password)      badges.push('<span class="badge badge-yellow">🔒 Есть пароль</span>');
+        if (test.is_anonymous)      badges.push('<span class="badge badge-gray">👤 Анонимный</span>');
+        if (test.shuffle_questions) badges.push('<span class="badge badge-blue">🔀 Перемешан</span>');
+        document.getElementById('preview-badges').innerHTML = badges.join(' ');
+
+        if (test.description) document.getElementById('preview-desc').textContent = test.description;
+        document.getElementById('preview-link').href = `/take-test.html?id=${test.id}&code=${test.code}`;
+        prev.classList.remove('d-none');
+      } catch (err) {
+        showAlert(alert, err.message);
+      }
+    }
+
+    // enter key for search
+    document.getElementById('test-code-input')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') findTest();
+    });
+
+    // ── Удаление ──
+    function openDeleteModal(id) {
+      deleteTargetId = id;
+      document.getElementById('delete-modal').classList.add('open');
+    }
+    function closeDeleteModal() {
+      deleteTargetId = null;
+      document.getElementById('delete-modal').classList.remove('open');
+    }
+    async function confirmDelete() {
+      if (!deleteTargetId) return;
+      const btn = document.getElementById('confirm-delete-btn');
+      btn.disabled = true;
+      try {
+        await API.delete(`/api/tests/${deleteTargetId}`);
+        closeDeleteModal();
+        showToast('Тест удалён', 'success');
+        loadTeacherTests();
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+      }
+    }
+
+    // close modal on overlay click
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeDeleteModal();
+    });
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Итоги теста — QuizMaster</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:28px; flex-wrap:wrap;">
+        <a href="/dashboard.html" class="btn btn-secondary btn-sm">← Назад</a>
+        <h1 style="font-family:var(--font-heading); font-size:1.8rem;" id="page-heading">Итоги теста</h1>
+      </div>
+
+      <div id="screen-loading" class="text-center" style="padding:60px;">
+        <p class="text-gray">Загрузка…</p>
+      </div>
+
+      <div id="screen-content" class="d-none">
+
+        <!-- Карточка теста -->
+        <div class="card mb-24">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title" id="test-title-h">—</h2>
+              <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+                <span class="badge badge-green" id="code-badge">—</span>
+                <span class="badge badge-gray"  id="q-badge">—</span>
+                <span class="badge badge-blue"  id="sub-badge">—</span>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="copyShareCode()">📋 Копировать код</button>
+              <a id="edit-link" href="#" class="btn btn-secondary btn-sm">✏️ Редактировать</a>
+            </div>
+          </div>
+
+          <!-- Сводная статистика -->
+          <div class="stats-row" id="summary-stats" style="margin-bottom:0;"></div>
+        </div>
+
+        <!-- Таблица попыток -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Все попытки</h3>
+            <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇️ Скачать CSV</button>
+          </div>
+          <div id="submissions-wrap">
+            <div class="empty-state">
+              <div class="empty-icon">📭</div>
+              <h3>Ещё нет попыток</h3>
+              <p>Поделитесь кодом теста со студентами</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    if (!Auth.requireAuth('teacher')) throw new Error();
+    renderNavbar();
+
+    const params = new URLSearchParams(location.search);
+    const testId = params.get('id');
+    if (!testId) window.location.href = '/dashboard.html';
+
+    let testData = null;
+    let subsData = [];
+
+    (async () => {
+      try {
+        const data = await API.get(`/api/tests/${testId}/results`);
+        testData = data.test;
+        subsData = data.submissions;
+        render(data);
+      } catch (err) {
+        document.getElementById('screen-loading').innerHTML = `
+          <div style="font-size:2.5rem;">😕</div>
+          <p class="text-gray mt-16">${err.message}</p>
+          <a href="/dashboard.html" class="btn btn-primary mt-24">← На главную</a>`;
+      }
+    })();
+
+    function render({ test, submissions }) {
+      document.getElementById('screen-loading').classList.add('d-none');
+      document.getElementById('screen-content').classList.remove('d-none');
+
+      document.getElementById('page-heading').textContent   = 'Итоги: ' + test.title;
+      document.getElementById('test-title-h').textContent   = test.title;
+      document.getElementById('code-badge').textContent     = '🔑 ' + test.code;
+      document.getElementById('q-badge').textContent        = `📋 ${submissions[0]?.total_questions ?? '?'} вопросов`;
+      document.getElementById('sub-badge').textContent      = `👥 ${submissions.length} попыток`;
+      document.getElementById('edit-link').href             = `/create-test.html?id=${test.id}`;
+
+      // Сводка
+      const scores   = submissions.map(s => s.total_questions ? Math.round(s.score / s.total_questions * 100) : 0);
+      const avgPct   = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+      const maxPct   = scores.length ? Math.max(...scores) : 0;
+      const minPct   = scores.length ? Math.min(...scores) : 0;
+      const passCount= scores.filter(p => p >= 60).length;
+
+      document.getElementById('summary-stats').innerHTML = `
+        <div class="stat-card">
+          <div class="stat-value">${avgPct}%</div>
+          <div class="stat-label">Средний балл</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${maxPct}%</div>
+          <div class="stat-label">Лучший результат</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${minPct}%</div>
+          <div class="stat-label">Низший результат</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${passCount}</div>
+          <div class="stat-label">Сдали (≥60%)</div>
+        </div>`;
+
+      if (!submissions.length) return;
+
+      const wrap = document.getElementById('submissions-wrap');
+      wrap.innerHTML = `
+        <div style="overflow-x:auto;">
+          <table class="submissions-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Студент</th>
+                <th>Логин</th>
+                <th>Баллы</th>
+                <th>Результат</th>
+                <th>Дата</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${submissions.map((s, i) => {
+                const pct   = s.total_questions ? Math.round(s.score / s.total_questions * 100) : 0;
+                const cls   = scorePillClass(s.score, s.total_questions);
+                const name  = escHtml(s.student_name || 'Аноним');
+                const login = s.username ? `<span class="badge badge-gray">${escHtml(s.username)}</span>` : '<span class="text-gray">—</span>';
+                return `
+                  <tr>
+                    <td class="text-gray">${i + 1}</td>
+                    <td><strong>${name}</strong></td>
+                    <td>${login}</td>
+                    <td>${s.score} / ${s.total_questions}</td>
+                    <td><span class="score-pill ${cls}">${pct}%</span></td>
+                    <td class="text-gray">${fmtDate(s.completed_at)}</td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    function copyShareCode() {
+      if (testData) copyToClipboard(testData.code, 'Код теста скопирован!');
+    }
+
+    function exportCSV() {
+      if (!subsData.length) { showToast('Нет данных для экспорта', 'error'); return; }
+      const rows = [
+        ['#', 'Студент', 'Логин', 'Баллы', 'Всего', 'Процент', 'Дата'],
+        ...subsData.map((s, i) => {
+          const pct = s.total_questions ? Math.round(s.score / s.total_questions * 100) : 0;
+          return [i+1, s.student_name || 'Аноним', s.username || '—',
+                  s.score, s.total_questions, pct + '%', fmtDate(s.completed_at)];
+        })
+      ];
+      const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `quiz_${testData?.code || testId}_results.csv`;
+      a.click();
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

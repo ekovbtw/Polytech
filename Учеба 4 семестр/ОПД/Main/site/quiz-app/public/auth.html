@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход / Регистрация — QuizMaster</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="auth-page">
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab" id="tab-login"    onclick="switchTab('login')">Войти</button>
+        <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Регистрация</button>
+      </div>
+
+      <div id="alert" class="alert"></div>
+
+      <!-- ── Форма входа ── -->
+      <form id="login-form" onsubmit="doLogin(event)">
+        <div class="form-group">
+          <label class="form-label">Логин или email</label>
+          <input id="login-login" class="form-input" type="text" placeholder="Ваш логин или email" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Пароль</label>
+          <div class="password-wrapper">
+            <input id="login-password" class="form-input" type="password" placeholder="Введите пароль" required autocomplete="current-password">
+            <button type="button" class="password-toggle">👁️</button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="login-btn">Войти</button>
+        <p class="text-center mt-16 text-sm text-gray">
+          Нет аккаунта? <a href="#" onclick="switchTab('register')">Зарегистрируйтесь</a>
+        </p>
+      </form>
+
+      <!-- ── Форма регистрации ── -->
+      <form id="register-form" class="d-none" onsubmit="doRegister(event)">
+        <div class="form-group">
+          <label class="form-label">Имя пользователя</label>
+          <input id="reg-username" class="form-input" type="text" placeholder="Например: ivanov_ivan" required autocomplete="username">
+          <span class="form-hint">От 3 до 30 символов. Только буквы, цифры и _</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">
+            Корпоративная почта
+            <span style="color: var(--graphite); font-weight: 500; font-size: 12px; margin-left: 4px;">
+              (используйте email учреждения)
+            </span>
+          </label>
+          <input id="reg-email" class="form-input" type="email"
+            placeholder="name@university.edu или name@school.ru" required autocomplete="email">
+          <span class="form-hint">⚠️ Укажите корпоративную почту вашего учебного заведения</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Пароль</label>
+          <div class="password-wrapper">
+            <input id="reg-password" class="form-input" type="password"
+              placeholder="Минимум 6 символов" required autocomplete="new-password">
+            <button type="button" class="password-toggle">👁️</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Повторите пароль</label>
+          <div class="password-wrapper">
+            <input id="reg-password2" class="form-input" type="password"
+              placeholder="Повторите пароль" required autocomplete="new-password">
+            <button type="button" class="password-toggle">👁️</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Выберите роль</label>
+          <div class="role-selector">
+            <div class="role-option">
+              <input type="radio" name="role" id="role-student" value="student" checked>
+              <label for="role-student">
+                <span class="role-icon">🎓</span>
+                Студент
+              </label>
+            </div>
+            <div class="role-option">
+              <input type="radio" name="role" id="role-teacher" value="teacher">
+              <label for="role-teacher">
+                <span class="role-icon">👨‍🏫</span>
+                Преподаватель
+              </label>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="reg-btn">Зарегистрироваться</button>
+        <p class="text-center mt-16 text-sm text-gray">
+          Уже есть аккаунт? <a href="#" onclick="switchTab('login')">Войдите</a>
+        </p>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    renderNavbar();
+    initPasswordToggles();
+
+    // redirect if logged in
+    if (Auth.isLoggedIn()) window.location.href = '/dashboard.html';
+
+    // set tab from URL
+    const params = new URLSearchParams(location.search);
+    switchTab(params.get('tab') === 'register' ? 'register' : 'login');
+
+    function switchTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('login-form').classList.toggle('d-none', !isLogin);
+      document.getElementById('register-form').classList.toggle('d-none', isLogin);
+      document.getElementById('tab-login').classList.toggle('active', isLogin);
+      document.getElementById('tab-register').classList.toggle('active', !isLogin);
+      hideAlert(document.getElementById('alert'));
+    }
+
+    async function doLogin(e) {
+      e.preventDefault();
+      const alert = document.getElementById('alert');
+      const btn   = document.getElementById('login-btn');
+      hideAlert(alert);
+      btn.disabled = true;
+      btn.textContent = 'Входим...';
+      try {
+        const data = await API.post('/api/auth/login', {
+          login:    document.getElementById('login-login').value.trim(),
+          password: document.getElementById('login-password').value
+        });
+        Auth.save(data.token, data.user);
+        window.location.href = '/dashboard.html';
+      } catch (err) {
+        showAlert(alert, err.message);
+        btn.disabled = false;
+        btn.textContent = 'Войти';
+      }
+    }
+
+    async function doRegister(e) {
+      e.preventDefault();
+      const alert = document.getElementById('alert');
+      const btn   = document.getElementById('reg-btn');
+      hideAlert(alert);
+
+      const pass  = document.getElementById('reg-password').value;
+      const pass2 = document.getElementById('reg-password2').value;
+      if (pass !== pass2) {
+        showAlert(alert, 'Пароли не совпадают');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Регистрация...';
+      try {
+        const data = await API.post('/api/auth/register', {
+          username: document.getElementById('reg-username').value.trim(),
+          email:    document.getElementById('reg-email').value.trim(),
+          password: pass,
+          role:     document.querySelector('input[name="role"]:checked').value
+        });
+        Auth.save(data.token, data.user);
+        window.location.href = '/dashboard.html';
+      } catch (err) {
+        showAlert(alert, err.message);
+        btn.disabled = false;
+        btn.textContent = 'Зарегистрироваться';
+      }
+    }
+  </script>
+</body>
+</html>

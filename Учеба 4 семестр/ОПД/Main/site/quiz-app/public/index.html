@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizMaster — Платформа для тестирования</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main>
+    <section class="hero container">
+      <div class="hero-logo">Quiz<span>Master</span></div>
+      <p>Создавайте тесты, делитесь кодом — студенты проходят мгновенно. Просто, удобно, эффективно.</p>
+      <div class="hero-buttons">
+        <a href="/auth.html?tab=register" class="btn btn-primary btn-lg">Начать бесплатно</a>
+        <a href="/auth.html?tab=login"    class="btn btn-secondary btn-lg">Войти</a>
+      </div>
+    </section>
+
+    <section class="container">
+      <div class="features">
+        <div class="feature-card">
+          <div class="feature-icon">📝</div>
+          <h3>Создавайте тесты</h3>
+          <p>Преподаватели могут составить тест с любым количеством вопросов за несколько минут.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔑</div>
+          <h3>Уникальный код</h3>
+          <p>Каждому тесту присваивается 6-символьный код. Студенты вводят код — и сразу начинают.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚙️</div>
+          <h3>Гибкие настройки</h3>
+          <p>Пароль к тесту, перемешивание вопросов, анонимный режим, показ результатов.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Результаты в реальном времени</h3>
+          <p>Преподаватель видит все попытки с оценками сразу после прохождения.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="container text-center" style="padding-bottom: 80px;">
+      <h2 style="font-family: var(--font-heading); color: var(--green); margin-bottom: 12px;">
+        Готовы начать?
+      </h2>
+      <p class="text-gray" style="margin-bottom: 24px;">Регистрация занимает меньше минуты</p>
+      <a href="/auth.html?tab=register" class="btn btn-primary btn-lg">Зарегистрироваться</a>
+    </section>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    renderNavbar();
+    // Redirect if already logged in
+    if (Auth.isLoggedIn()) window.location.href = '/dashboard.html';
+  </script>
+</body>
+</html>

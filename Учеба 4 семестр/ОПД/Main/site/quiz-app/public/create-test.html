@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Создать тест — QuizMaster</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:28px; flex-wrap:wrap;">
+        <a href="/dashboard.html" class="btn btn-secondary btn-sm">← Назад</a>
+        <h1 style="font-family:var(--font-heading); font-size:1.8rem;" id="page-title">Создать тест</h1>
+      </div>
+
+      <div id="global-alert" class="alert"></div>
+
+      <div class="create-layout">
+        <!-- ── Левая колонка: основная форма ── -->
+        <div>
+          <!-- Заголовок и описание -->
+          <div class="card mb-24">
+            <div class="form-group" style="margin-bottom:16px;">
+              <label class="form-label">Название теста *</label>
+              <input id="test-title" class="form-input" type="text"
+                placeholder="Например: Контрольная по теме «Алгоритмы»" maxlength="120">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Описание <span class="text-gray fw-bold" style="font-size:12px;">(необязательно)</span></label>
+              <textarea id="test-desc" class="form-textarea"
+                placeholder="Краткое описание теста, инструкции…" rows="2"></textarea>
+            </div>
+          </div>
+
+          <!-- Вопросы -->
+          <div id="questions-container"></div>
+
+          <button class="btn btn-secondary btn-block" onclick="addQuestion()" style="margin-bottom:32px;">
+            ➕ Добавить вопрос
+          </button>
+
+          <!-- Кнопки сохранения -->
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-lg" onclick="saveTest()" id="save-btn">
+              💾 Сохранить тест
+            </button>
+            <a href="/dashboard.html" class="btn btn-secondary btn-lg">Отмена</a>
+          </div>
+        </div>
+
+        <!-- ── Правая колонка: настройки ── -->
+        <div class="settings-card">
+          <h3>⚙️ Настройки теста</h3>
+          <p class="text-gray text-sm mb-16" style="margin-top:4px;">Настройте параметры доступа и прохождения</p>
+
+          <!-- Пароль -->
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">🔒 Вход по паролю</div>
+              <div class="toggle-desc">Студенты должны ввести пароль</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-password" onchange="togglePasswordField()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div id="password-field" class="d-none" style="padding: 12px 0 4px;">
+            <div class="password-wrapper">
+              <input id="test-password" class="form-input" type="password" placeholder="Пароль к тесту">
+              <button type="button" class="password-toggle">👁️</button>
+            </div>
+          </div>
+
+          <!-- Анонимный -->
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">👤 Анонимный тест</div>
+              <div class="toggle-desc">Не требовать имя студента</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-anon">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <!-- Показ результатов -->
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">📊 Студент видит результат</div>
+              <div class="toggle-desc">Показать оценку после прохождения</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-results" checked>
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <!-- Перемешивание -->
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">🔀 Перемешать вопросы</div>
+              <div class="toggle-desc">Уникальный порядок для каждого</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-shuffle">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <!-- Код теста (при редактировании) -->
+          <div id="code-section" class="d-none" style="margin-top:20px;">
+            <hr class="divider" style="margin:0 0 16px;">
+            <div class="text-sm text-gray fw-bold mb-8">КОД ТЕСТА</div>
+            <div class="code-display" style="margin:0;">
+              <span class="code-text" id="test-code-display">——</span>
+              <button class="btn btn-secondary btn-sm code-copy-btn" onclick="copyCode()">📋 Копировать</button>
+            </div>
+            <p class="text-sm text-gray mt-8">Поделитесь кодом со студентами</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    if (!Auth.requireAuth('teacher')) throw new Error('not teacher');
+    renderNavbar();
+    initPasswordToggles();
+
+    const params   = new URLSearchParams(location.search);
+    const editId   = params.get('id');
+    let   testCode = null;
+    let   qCount   = 0;
+
+    if (editId) {
+      document.getElementById('page-title').textContent = 'Редактировать тест';
+      loadTest(editId);
+    } else {
+      addQuestion(); // начать с одного вопроса
+    }
+
+    // ── Загрузка теста для редактирования ──
+    async function loadTest(id) {
+      try {
+        const test = await API.get(`/api/tests/${id}`);
+        document.getElementById('test-title').value = test.title;
+        document.getElementById('test-desc').value  = test.description || '';
+
+        if (test.password) {
+          document.getElementById('toggle-password').checked = true;
+          togglePasswordField();
+          document.getElementById('test-password').value = test.password;
+        }
+        document.getElementById('toggle-anon').checked    = !!test.is_anonymous;
+        document.getElementById('toggle-results').checked = !!test.show_results;
+        document.getElementById('toggle-shuffle').checked = !!test.shuffle_questions;
+
+        // код
+        testCode = test.code;
+        document.getElementById('test-code-display').textContent = test.code;
+        document.getElementById('code-section').classList.remove('d-none');
+
+        // вопросы
+        test.questions.forEach(q => addQuestion(q));
+      } catch (err) {
+        showAlert(document.getElementById('global-alert'), err.message);
+      }
+    }
+
+    // ── Переключатель поля пароля ──
+    function togglePasswordField() {
+      const show = document.getElementById('toggle-password').checked;
+      document.getElementById('password-field').classList.toggle('d-none', !show);
+      initPasswordToggles();
+    }
+
+    // ── Добавить вопрос ──
+    function addQuestion(data = null) {
+      qCount++;
+      const qNum = qCount;
+      const div  = document.createElement('div');
+      div.className = 'question-block';
+      div.id = `q-block-${qNum}`;
+
+      const answers = data?.answers?.length ? data.answers : [
+        { answer_text: '', is_correct: true  },
+        { answer_text: '', is_correct: false }
+      ];
+
+      div.innerHTML = `
+        <div class="question-header">
+          <div class="question-num">${qNum}</div>
+          <input class="form-input" type="text" placeholder="Текст вопроса…"
+            value="${escHtml(data?.question_text || '')}"
+            style="margin-bottom:0; flex:1;">
+          <button class="btn-icon" onclick="removeQuestion(${qNum})" title="Удалить вопрос">🗑️</button>
+        </div>
+        <div class="answers-list" id="answers-${qNum}"></div>
+        <button class="add-answer-btn" onclick="addAnswer(${qNum})">+ Добавить вариант ответа</button>
+        <p class="text-sm text-gray mt-8">⬤ Отметьте правильный вариант радиокнопкой</p>
+      `;
+      document.getElementById('questions-container').appendChild(div);
+
+      answers.forEach(a => addAnswer(qNum, a));
+      renumberQuestions();
+    }
+
+    // ── Удалить вопрос ──
+    function removeQuestion(num) {
+      const el = document.getElementById(`q-block-${num}`);
+      if (el) el.remove();
+      renumberQuestions();
+    }
+
+    function renumberQuestions() {
+      document.querySelectorAll('.question-block').forEach((block, i) => {
+        const numEl = block.querySelector('.question-num');
+        if (numEl) numEl.textContent = i + 1;
+      });
+    }
+
+    // ── Добавить вариант ответа ──
+    let aCount = 0;
+    function addAnswer(qNum, data = null) {
+      aCount++;
+      const aId  = `a-${qNum}-${aCount}`;
+      const list = document.getElementById(`answers-${qNum}`);
+      const div  = document.createElement('div');
+      div.className = 'answer-row';
+      div.id = aId;
+      div.innerHTML = `
+        <input type="radio" name="correct-${qNum}" ${data?.is_correct ? 'checked' : ''}
+          title="Правильный ответ" style="flex-shrink:0; width:18px; height:18px; accent-color:var(--green); cursor:pointer;">
+        <input class="form-input" type="text" placeholder="Вариант ответа…"
+          value="${escHtml(data?.answer_text || '')}" style="margin-bottom:0;">
+        <button class="btn-icon" onclick="removeAnswer('${aId}', ${qNum})" title="Удалить">✕</button>
+      `;
+      list.appendChild(div);
+    }
+
+    function removeAnswer(aId, qNum) {
+      const list = document.getElementById(`answers-${qNum}`);
+      if (list.children.length <= 2) {
+        showToast('Минимум 2 варианта ответа', 'error');
+        return;
+      }
+      document.getElementById(aId)?.remove();
+    }
+
+    // ── Сбор данных из формы ──
+    function collectFormData() {
+      const title = document.getElementById('test-title').value.trim();
+      const desc  = document.getElementById('test-desc').value.trim();
+      const usePwd = document.getElementById('toggle-password').checked;
+      const password = usePwd ? document.getElementById('test-password').value : null;
+
+      const questions = [];
+      document.querySelectorAll('.question-block').forEach((block, qi) => {
+        const qText   = block.querySelector('input[type=text]').value.trim();
+        const answers = [];
+        const ansRows = block.querySelectorAll('.answer-row');
+        ansRows.forEach(row => {
+          const radio     = row.querySelector('input[type=radio]');
+          const textInput = row.querySelector('input[type=text]');
+          answers.push({
+            answer_text: textInput.value.trim(),
+            is_correct:  radio.checked ? 1 : 0
+          });
+        });
+        questions.push({ question_text: qText, question_order: qi, answers });
+      });
+
+      return {
+        title,
+        description: desc,
+        password:           password || null,
+        is_anonymous:       document.getElementById('toggle-anon').checked,
+        show_results:       document.getElementById('toggle-results').checked,
+        shuffle_questions:  document.getElementById('toggle-shuffle').checked,
+        questions
+      };
+    }
+
+    // ── Сохранить тест ──
+    async function saveTest() {
+      const alert = document.getElementById('global-alert');
+      hideAlert(alert);
+      const btn = document.getElementById('save-btn');
+      btn.disabled = true;
+      btn.textContent = 'Сохраняем...';
+
+      try {
+        const body = collectFormData();
+        let result;
+        if (editId) {
+          result = await API.put(`/api/tests/${editId}`, body);
+        } else {
+          result = await API.post('/api/tests', body);
+        }
+        testCode = result.code;
+        document.getElementById('test-code-display').textContent = result.code;
+        document.getElementById('code-section').classList.remove('d-none');
+        showToast(editId ? 'Тест обновлён!' : 'Тест создан!', 'success');
+
+        if (!editId) {
+          // показываем диалог с кодом и редиректим
+          setTimeout(() => { window.location.href = `/dashboard.html`; }, 1800);
+        }
+      } catch (err) {
+        showAlert(alert, err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Сохранить тест';
+      }
+    }
+
+    function copyCode() {
+      if (testCode) copyToClipboard(testCode, 'Код теста скопирован!');
+    }
+
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>

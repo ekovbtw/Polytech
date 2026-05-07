@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Прохождение теста — QuizMaster</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="take-test-container">
+
+        <!-- ── Экран загрузки ── -->
+        <div id="screen-loading" class="text-center" style="padding:80px 20px;">
+          <div style="font-size:3rem;">⏳</div>
+          <p class="text-gray mt-16">Загружаем тест…</p>
+        </div>
+
+        <!-- ── Экран входа (пароль / имя) ── -->
+        <div id="screen-entry" class="d-none">
+          <div class="card" style="max-width:480px; margin:0 auto;">
+            <div style="text-align:center; margin-bottom:24px;">
+              <div style="font-size:2.5rem;">🔐</div>
+              <h2 style="font-family:var(--font-heading); margin-top:8px;" id="entry-title">Вход в тест</h2>
+              <p class="text-gray text-sm mt-8" id="entry-meta"></p>
+            </div>
+            <div id="entry-alert" class="alert"></div>
+
+            <div id="password-entry" class="d-none form-group">
+              <label class="form-label">🔒 Пароль к тесту</label>
+              <div class="password-wrapper">
+                <input id="entry-password" class="form-input" type="password" placeholder="Введите пароль">
+                <button type="button" class="password-toggle">👁️</button>
+              </div>
+            </div>
+
+            <div id="name-entry" class="d-none form-group">
+              <label class="form-label" id="name-label">Ваше имя</label>
+              <input id="entry-name" class="form-input" type="text"
+                placeholder="Введите ваше имя или псевдоним">
+            </div>
+
+            <button class="btn btn-primary btn-block btn-lg" onclick="startTest()" id="start-btn">
+              Начать тест →
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Экран теста ── -->
+        <div id="screen-test" class="d-none">
+          <div style="margin-bottom:24px;">
+            <h2 style="font-family:var(--font-heading);" id="test-title-display">—</h2>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px; flex-wrap:wrap; gap:8px;">
+              <span class="text-gray text-sm" id="progress-text">Вопрос 0 из 0</span>
+              <span class="text-gray text-sm" id="answered-count">Отвечено: 0</span>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+          </div>
+
+          <div id="questions-list"></div>
+
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+            <button class="btn btn-primary btn-lg" onclick="submitTest()" id="submit-btn">
+              ✅ Завершить и отправить
+            </button>
+            <a href="/dashboard.html" class="btn btn-secondary btn-lg">Отмена</a>
+          </div>
+        </div>
+
+        <!-- ── Экран: результаты скрыты ── -->
+        <div id="screen-hidden" class="d-none text-center" style="padding:60px 20px;">
+          <div style="font-size:3.5rem;">📬</div>
+          <h2 style="font-family:var(--font-heading); margin:16px 0 8px;">Тест отправлен!</h2>
+          <p class="text-gray">Преподаватель скрыл результаты. Вы узнаете оценку позже.</p>
+          <a href="/dashboard.html" class="btn btn-primary mt-24">На главную</a>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    renderNavbar();
+    initPasswordToggles();
+
+    const params = new URLSearchParams(location.search);
+    const testId   = params.get('id');
+    const testCode = params.get('code');
+
+    let testInfo   = null;
+    let questions  = [];
+    let userAnswers = {};   // { questionId: answerId }
+
+    if (!testId) { window.location.href = '/dashboard.html'; }
+
+    // ── Начальная загрузка метаданных ──
+    (async () => {
+      try {
+        const code = testCode || testId;
+        const meta = await API.get(`/api/public/tests/${code}`);
+        testInfo = meta;
+        showEntryScreen(meta);
+      } catch (err) {
+        document.getElementById('screen-loading').innerHTML = `
+          <div style="font-size:3rem;">😕</div>
+          <h3 style="font-family:var(--font-heading); margin:12px 0 8px;">Тест не найден</h3>
+          <p class="text-gray">${err.message}</p>
+          <a href="/dashboard.html" class="btn btn-primary mt-24">На главную</a>`;
+      }
+    })();
+
+    function showEntryScreen(meta) {
+      document.getElementById('screen-loading').classList.add('d-none');
+      document.getElementById('screen-entry').classList.remove('d-none');
+      document.getElementById('entry-title').textContent = meta.title;
+      document.getElementById('entry-meta').textContent =
+        `${meta.question_count} вопросов`;
+
+      if (meta.has_password) {
+        document.getElementById('password-entry').classList.remove('d-none');
+      }
+
+      const user = Auth.getUser();
+      if (!user) {
+        // не авторизован — просим имя (если не анонимный — обязательно)
+        const nameDiv = document.getElementById('name-entry');
+        nameDiv.classList.remove('d-none');
+        const label = document.getElementById('name-label');
+        if (meta.is_anonymous) {
+          label.innerHTML = 'Ваше имя <span class="text-gray" style="font-weight:500;">(необязательно)</span>';
+          document.getElementById('entry-name').placeholder = 'Аноним';
+        } else {
+          label.textContent = 'Ваше имя *';
+          document.getElementById('entry-name').placeholder = 'Введите имя';
+          document.getElementById('entry-name').required = true;
+        }
+      } else if (meta.is_anonymous) {
+        // авторизован, но тест анонимный — предлагаем псевдоним
+        const nameDiv = document.getElementById('name-entry');
+        nameDiv.classList.remove('d-none');
+        document.getElementById('name-label').innerHTML =
+          'Псевдоним <span class="text-gray" style="font-weight:500;">(необязательно)</span>';
+        document.getElementById('entry-name').placeholder = user.username;
+      }
+    }
+
+    async function startTest() {
+      const alert = document.getElementById('entry-alert');
+      hideAlert(alert);
+
+      const user = Auth.getUser();
+      const password = document.getElementById('entry-password').value || '';
+      const nameVal  = document.getElementById('entry-name').value.trim();
+
+      if (testInfo.has_password && !password) {
+        showAlert(alert, 'Введите пароль для доступа к тесту');
+        return;
+      }
+      if (!user && !testInfo.is_anonymous && !nameVal) {
+        showAlert(alert, 'Введите ваше имя');
+        return;
+      }
+
+      document.getElementById('start-btn').disabled = true;
+      document.getElementById('start-btn').textContent = 'Загружаем…';
+
+      try {
+        const data = await API.post(`/api/public/tests/${testInfo.id}/questions`, { password });
+        testInfo   = data.test;
+        questions  = data.questions;
+
+        // определяем имя
+        if (user) {
+          testInfo._studentName = nameVal || user.username;
+          testInfo._userId      = user.id;
+        } else {
+          testInfo._studentName = nameVal || 'Аноним';
+          testInfo._userId      = null;
+        }
+        testInfo._password = password;
+
+        renderTestScreen();
+      } catch (err) {
+        showAlert(alert, err.message);
+        document.getElementById('start-btn').disabled = false;
+        document.getElementById('start-btn').textContent = 'Начать тест →';
+      }
+    }
+
+    function renderTestScreen() {
+      document.getElementById('screen-entry').classList.add('d-none');
+      document.getElementById('screen-test').classList.remove('d-none');
+      document.getElementById('test-title-display').textContent = testInfo.title || 'Тест';
+      updateProgress();
+
+      const list = document.getElementById('questions-list');
+      list.innerHTML = questions.map((q, i) => `
+        <div class="test-question-card" id="qcard-${q.id}">
+          <h3>${i + 1}. ${escHtml(q.question_text)}</h3>
+          ${q.answers.map(a => `
+            <label class="answer-option" id="ao-${q.id}-${a.id}" onclick="selectAnswer(${q.id}, ${a.id}, this)">
+              <input type="radio" name="q${q.id}" value="${a.id}">
+              <div class="answer-dot"></div>
+              <span>${escHtml(a.answer_text)}</span>
+            </label>
+          `).join('')}
+        </div>
+      `).join('');
+    }
+
+    function selectAnswer(qId, aId, el) {
+      // снять выделение
+      document.querySelectorAll(`#qcard-${qId} .answer-option`)
+        .forEach(opt => opt.classList.remove('selected'));
+      el.classList.add('selected');
+      userAnswers[qId] = aId;
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const total    = questions.length;
+      const answered = Object.keys(userAnswers).length;
+      const pct      = total ? (answered / total) * 100 : 0;
+      document.getElementById('progress-fill').style.width  = pct + '%';
+      document.getElementById('progress-text').textContent  = `Вопросов: ${total}`;
+      document.getElementById('answered-count').textContent = `Отвечено: ${answered} из ${total}`;
+    }
+
+    async function submitTest() {
+      const unanswered = questions.filter(q => !userAnswers[q.id]).length;
+      if (unanswered > 0) {
+        const ok = confirm(`Вы не ответили на ${unanswered} вопрос(а). Завершить всё равно?`);
+        if (!ok) return;
+      }
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Отправляем…';
+
+      try {
+        const result = await API.post('/api/submissions', {
+          test_id:      testInfo.id,
+          answers:      userAnswers,
+          password:     testInfo._password || null,
+          student_name: testInfo._studentName,
+          user_id:      testInfo._userId
+        });
+
+        if (result.show_results) {
+          window.location.href = `/results.html?id=${result.submission_id}`;
+        } else {
+          document.getElementById('screen-test').classList.add('d-none');
+          document.getElementById('screen-hidden').classList.remove('d-none');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '✅ Завершить и отправить';
+      }
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

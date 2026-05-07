@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Результаты — QuizMaster</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="take-test-container">
+
+        <div id="screen-loading" class="text-center" style="padding:80px 20px;">
+          <div style="font-size:3rem;">⏳</div>
+          <p class="text-gray mt-16">Загружаем результаты…</p>
+        </div>
+
+        <div id="screen-results" class="d-none">
+          <!-- Заголовок -->
+          <div class="card text-center mb-24" style="padding:36px 24px;">
+            <h2 style="font-family:var(--font-heading); color:var(--charcoal); margin-bottom:24px;" id="result-title">—</h2>
+
+            <div class="score-circle" id="score-circle">
+              <div class="score-circle-inner">
+                <div class="score-number" id="score-num">—</div>
+                <div class="score-total"  id="score-total">—</div>
+              </div>
+            </div>
+
+            <div style="margin:16px 0 8px;">
+              <span class="badge" id="score-badge" style="font-size:15px; padding:6px 20px;">—</span>
+            </div>
+            <p class="text-gray" id="result-student-name" style="font-size:14px;"></p>
+            <p class="text-gray" id="result-date" style="font-size:13px;"></p>
+
+            <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:24px;">
+              <a href="/dashboard.html" class="btn btn-primary">На главную</a>
+              <button class="btn btn-secondary" onclick="window.print()">🖨️ Распечатать</button>
+            </div>
+          </div>
+
+          <!-- Детали ответов -->
+          <div id="answers-detail" class="d-none">
+            <h3 style="font-family:var(--font-heading); margin-bottom:16px;">Разбор ответов</h3>
+            <div id="answers-list"></div>
+          </div>
+
+          <!-- Скрыто преподавателем -->
+          <div id="results-hidden" class="d-none card text-center" style="padding:40px;">
+            <div style="font-size:2.5rem;">🔒</div>
+            <h3 style="font-family:var(--font-heading); margin:12px 0 8px;">Результаты скрыты</h3>
+            <p class="text-gray">Преподаватель решил не показывать подробные результаты.</p>
+            <p class="text-gray text-sm mt-8">Обратитесь к преподавателю для получения оценки.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    renderNavbar();
+
+    const params = new URLSearchParams(location.search);
+    const subId  = params.get('id');
+
+    if (!subId) window.location.href = '/dashboard.html';
+
+    (async () => {
+      try {
+        const data = await API.get(`/api/submissions/${subId}`);
+        renderResults(data);
+      } catch (err) {
+        document.getElementById('screen-loading').innerHTML = `
+          <div style="font-size:3rem;">😕</div>
+          <h3 style="font-family:var(--font-heading); margin:12px 0 8px;">Не удалось загрузить</h3>
+          <p class="text-gray">${err.message}</p>
+          <a href="/dashboard.html" class="btn btn-primary mt-24">На главную</a>`;
+      }
+    })();
+
+    function renderResults(data) {
+      document.getElementById('screen-loading').classList.add('d-none');
+      document.getElementById('screen-results').classList.remove('d-none');
+
+      document.getElementById('result-title').textContent = data.title || 'Результаты теста';
+
+      const score  = data.score ?? 0;
+      const total  = data.total_questions ?? data.total ?? 0;
+      const pct    = total ? Math.round((score / total) * 100) : 0;
+
+      // Круговой прогресс
+      const circle = document.getElementById('score-circle');
+      circle.style.setProperty('--pct', pct);
+
+      document.getElementById('score-num').textContent   = score;
+      document.getElementById('score-total').textContent = `из ${total}`;
+
+      // Бейдж
+      const badge = document.getElementById('score-badge');
+      if (pct >= 80) {
+        badge.className = 'badge badge-green';
+        badge.textContent = `🏆 Отлично! ${pct}%`;
+      } else if (pct >= 60) {
+        badge.className = 'badge badge-blue';
+        badge.textContent = `👍 Хорошо! ${pct}%`;
+      } else if (pct >= 40) {
+        badge.className = 'badge badge-yellow';
+        badge.textContent = `📖 Удовлетворительно ${pct}%`;
+      } else {
+        badge.className = 'badge badge-gray';
+        badge.textContent = `💪 Нужно поработать ${pct}%`;
+      }
+
+      if (data.student_name) {
+        document.getElementById('result-student-name').textContent = `Студент: ${data.student_name}`;
+      }
+      if (data.completed_at) {
+        document.getElementById('result-date').textContent = `Сдано: ${fmtDate(data.completed_at)}`;
+      }
+
+      if (!data.show_results) {
+        document.getElementById('results-hidden').classList.remove('d-none');
+        return;
+      }
+
+      if (data.answers && data.answers.length) {
+        document.getElementById('answers-detail').classList.remove('d-none');
+        const list = document.getElementById('answers-list');
+        list.innerHTML = data.answers.map(a => {
+          const ok = a.selected_is_correct;
+          return `
+            <div class="result-item ${ok ? 'ok' : 'fail'}">
+              <div class="result-item-q">
+                <span class="result-icon">${ok ? '✅' : '❌'}</span>
+                ${escHtml(a.question_text)}
+              </div>
+              <div class="result-item-a">
+                <span class="text-gray">Ваш ответ:</span>
+                <strong style="color:${ok ? 'var(--green-dark)' : '#c62828'}">
+                  ${escHtml(a.selected_answer || '— не ответил')}
+                </strong>
+                ${!ok && a.correct_answer ? `
+                  <span class="text-gray" style="margin-left:12px;">Правильно:</span>
+                  <strong style="color:var(--green-dark)">${escHtml(a.correct_answer)}</strong>
+                ` : ''}
+              </div>
+            </div>`;
+        }).join('');
+      }
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>
