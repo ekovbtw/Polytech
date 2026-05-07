@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(where.exe node 2>$null; where.exe npm 2>$null; $env:PATH -split \";\" | Where-Object { $_ -match \"node|nvm\" })",
+      "PowerShell($env:PATH = $env:PATH + \";C:\\\\Program Files\\\\nodejs\"; Set-Location \"C:\\\\Users\\\\Илья\\\\Documents\\\\my-obsidian\\\\Учеба 4 семестр\\\\ОПД\\\\Main\\\\.claude\\\\worktrees\\\\nifty-mcnulty-2d141f\\\\quiz-app\"; npm install 2>&1)",
+      "Bash(find \"/c/Users/Илья/Documents/my-obsidian\" -name \"package.json\" -path \"*/quiz-app/*\" 2>/dev/null)",
+      "Bash(cd \"/c/Users/Илья/Documents/my-obsidian/Учеба 4 семестр/ОПД/Main/site/quiz-app\" && ls)",
+      "PowerShell(cmd.exe /c \"`\"C:\\\\Program Files\\\\nodejs\\\\npm.cmd`\" view better-sqlite3 dist-tags 2>&1\")"
+    ]
+  }
+}

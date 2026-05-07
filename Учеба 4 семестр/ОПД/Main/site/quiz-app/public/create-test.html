@@ -135,6 +135,7 @@
     const editId   = params.get('id');
     let   testCode = null;
     let   qCount   = 0;
+    let   aCount   = 0;  // объявляем ДО первого вызова addAnswer()
 
     if (editId) {
       document.getElementById('page-title').textContent = 'Редактировать тест';
@@ -175,36 +176,74 @@
     function togglePasswordField() {
       const show = document.getElementById('toggle-password').checked;
       document.getElementById('password-field').classList.toggle('d-none', !show);
-      initPasswordToggles();
+      // Глазок работает через event delegation в common.js — повторный вызов не нужен
     }
 
     // ── Добавить вопрос ──
     function addQuestion(data = null) {
       qCount++;
       const qNum = qCount;
-      const div  = document.createElement('div');
+
+      // Создаём блок вопроса без inline-onclick
+      const div = document.createElement('div');
       div.className = 'question-block';
       div.id = `q-block-${qNum}`;
 
+      // Шапка: номер + поле текста + кнопка удаления
+      const header = document.createElement('div');
+      header.className = 'question-header';
+
+      const numBadge = document.createElement('div');
+      numBadge.className = 'question-num';
+      numBadge.textContent = qNum;
+
+      const textInput = document.createElement('input');
+      textInput.className = 'form-input';
+      textInput.type = 'text';
+      textInput.placeholder = 'Текст вопроса…';
+      textInput.value = data?.question_text || '';
+      textInput.style.cssText = 'margin-bottom:0; flex:1;';
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-icon';
+      delBtn.title = 'Удалить вопрос';
+      delBtn.textContent = '🗑️';
+      delBtn.type = 'button';
+      delBtn.addEventListener('click', () => removeQuestion(qNum));
+
+      header.appendChild(numBadge);
+      header.appendChild(textInput);
+      header.appendChild(delBtn);
+
+      // Контейнер вариантов ответов
+      const answersList = document.createElement('div');
+      answersList.className = 'answers-list';
+      answersList.id = `answers-${qNum}`;
+
+      // Кнопка «+ Добавить вариант ответа»
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-answer-btn';
+      addBtn.type = 'button';
+      addBtn.textContent = '+ Добавить вариант ответа';
+      addBtn.addEventListener('click', () => addAnswer(qNum));
+
+      // Подсказка
+      const hint = document.createElement('p');
+      hint.className = 'text-sm text-gray mt-8';
+      hint.textContent = '⬤ Отметьте правильный вариант радиокнопкой';
+
+      div.appendChild(header);
+      div.appendChild(answersList);
+      div.appendChild(addBtn);
+      div.appendChild(hint);
+
+      document.getElementById('questions-container').appendChild(div);
+
+      // Добавляем начальные варианты ответов
       const answers = data?.answers?.length ? data.answers : [
         { answer_text: '', is_correct: true  },
         { answer_text: '', is_correct: false }
       ];
-
-      div.innerHTML = `
-        <div class="question-header">
-          <div class="question-num">${qNum}</div>
-          <input class="form-input" type="text" placeholder="Текст вопроса…"
-            value="${escHtml(data?.question_text || '')}"
-            style="margin-bottom:0; flex:1;">
-          <button class="btn-icon" onclick="removeQuestion(${qNum})" title="Удалить вопрос">🗑️</button>
-        </div>
-        <div class="answers-list" id="answers-${qNum}"></div>
-        <button class="add-answer-btn" onclick="addAnswer(${qNum})">+ Добавить вариант ответа</button>
-        <p class="text-sm text-gray mt-8">⬤ Отметьте правильный вариант радиокнопкой</p>
-      `;
-      document.getElementById('questions-container').appendChild(div);
-
       answers.forEach(a => addAnswer(qNum, a));
       renumberQuestions();
     }
@@ -224,21 +263,43 @@
     }
 
     // ── Добавить вариант ответа ──
-    let aCount = 0;
     function addAnswer(qNum, data = null) {
       aCount++;
       const aId  = `a-${qNum}-${aCount}`;
       const list = document.getElementById(`answers-${qNum}`);
-      const div  = document.createElement('div');
+      if (!list) { console.error('answers list not found for q', qNum); return; }
+
+      const div = document.createElement('div');
       div.className = 'answer-row';
       div.id = aId;
-      div.innerHTML = `
-        <input type="radio" name="correct-${qNum}" ${data?.is_correct ? 'checked' : ''}
-          title="Правильный ответ" style="flex-shrink:0; width:18px; height:18px; accent-color:var(--green); cursor:pointer;">
-        <input class="form-input" type="text" placeholder="Вариант ответа…"
-          value="${escHtml(data?.answer_text || '')}" style="margin-bottom:0;">
-        <button class="btn-icon" onclick="removeAnswer('${aId}', ${qNum})" title="Удалить">✕</button>
-      `;
+
+      // Радиокнопка «правильный ответ»
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = `correct-${qNum}`;
+      radio.title = 'Правильный ответ';
+      radio.checked = !!(data?.is_correct);
+      radio.style.cssText = 'flex-shrink:0; width:18px; height:18px; accent-color:var(--green); cursor:pointer;';
+
+      // Текст варианта
+      const textInput = document.createElement('input');
+      textInput.className = 'form-input';
+      textInput.type = 'text';
+      textInput.placeholder = 'Вариант ответа…';
+      textInput.value = data?.answer_text || '';
+      textInput.style.marginBottom = '0';
+
+      // Кнопка удаления варианта
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-icon';
+      delBtn.type = 'button';
+      delBtn.title = 'Удалить вариант';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => removeAnswer(aId, qNum));
+
+      div.appendChild(radio);
+      div.appendChild(textInput);
+      div.appendChild(delBtn);
       list.appendChild(div);
     }
 

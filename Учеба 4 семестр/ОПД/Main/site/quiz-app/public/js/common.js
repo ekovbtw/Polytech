@@ -72,21 +72,25 @@ function hideAlert(el) {
   if (el) el.className = 'alert';
 }
 
-/* ── Password visibility toggle ──────────────────── */
-function initPasswordToggles() {
-  document.querySelectorAll('.password-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = btn.closest('.password-wrapper').querySelector('input');
-      if (input.type === 'password') {
-        input.type = 'text';
-        btn.textContent = '🙈';
-      } else {
-        input.type = 'password';
-        btn.textContent = '👁️';
-      }
-    });
-  });
-}
+/* ── Password visibility toggle (event delegation) ── */
+// Один обработчик на весь документ — работает для любых кнопок,
+// в том числе добавленных динамически. Не нужно вызывать повторно.
+document.addEventListener('click', function (e) {
+  const btn = e.target.closest('.password-toggle');
+  if (!btn) return;
+  const input = btn.closest('.password-wrapper')?.querySelector('input');
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁️';
+  }
+});
+
+// Оставляем функцию как no-op для обратной совместимости с вызовами на страницах
+function initPasswordToggles() { /* handled by delegation above */ }
 
 /* ── Navbar ───────────────────────────────────────── */
 function renderNavbar() {
