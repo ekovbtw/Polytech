@@ -12,7 +12,13 @@
       "WebSearch",
       "WebFetch(domain:conf.spbstu.ru)",
       "WebFetch(domain:www.spbstu.ru)",
-      "WebFetch(domain:ru.wikipedia.org)"
+      "WebFetch(domain:ru.wikipedia.org)",
+      "Bash(npm install *)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(npx pm2 *)",
+      "Bash(Get-Process node *)",
+      "Bash(Select-Object Id, CPU, WorkingSet)",
+      "Bash(Format-Table)"
     ]
   }
 }

@@ -1,10 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Итоги теста — PolyTest</title>
+  <title>Итоги теста — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <header class="navbar"><div id="navbar"></div></header>
@@ -48,7 +51,9 @@
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Все попытки</h3>
-            <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇️ Скачать CSV</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="exportXLS()">⬇️ Скачать Excel</button>
+            </div>
           </div>
           <div id="submissions-wrap">
             <div class="empty-state">
@@ -134,26 +139,34 @@
             <thead>
               <tr>
                 <th>#</th>
-                <th>Студент</th>
+                <th>Имя</th>
+                <th>Фамилия</th>
                 <th>Логин</th>
                 <th>Баллы</th>
                 <th>Результат</th>
-                <th>Дата</th>
+                <th>Статус</th>
+                <th>Дата сдачи</th>
               </tr>
             </thead>
             <tbody>
               ${submissions.map((s, i) => {
-                const pct   = s.total_questions ? Math.round(s.score / s.total_questions * 100) : 0;
-                const cls   = scorePillClass(s.score, s.total_questions);
-                const name  = escHtml(s.student_name || 'Аноним');
-                const login = s.username ? `<span class="badge badge-gray">${escHtml(s.username)}</span>` : '<span class="text-gray">—</span>';
+                const pct    = s.total_questions ? Math.round(s.score / s.total_questions * 100) : 0;
+                const cls    = scorePillClass(s.score, s.total_questions);
+                const fname  = escHtml(s.first_name || '—');
+                const lname  = escHtml(s.last_name  || '—');
+                const login  = s.username ? `<span class="badge badge-gray">${escHtml(s.username)}</span>` : '<span class="text-gray">Аноним</span>';
+                const status = pct >= 60
+                  ? `<span class="badge badge-green">Сдал</span>`
+                  : `<span class="badge badge-gray">Не сдал</span>`;
                 return `
                   <tr>
                     <td class="text-gray">${i + 1}</td>
-                    <td><strong>${name}</strong></td>
+                    <td><strong>${fname}</strong></td>
+                    <td>${lname}</td>
                     <td>${login}</td>
                     <td>${s.score} / ${s.total_questions}</td>
                     <td><span class="score-pill ${cls}">${pct}%</span></td>
+                    <td>${status}</td>
                     <td class="text-gray">${fmtDate(s.completed_at)}</td>
                   </tr>`;
               }).join('')}
@@ -166,22 +179,64 @@
       if (testData) copyToClipboard(testData.code, 'Код теста скопирован!');
     }
 
-    function exportCSV() {
+    function exportXLS() {
       if (!subsData.length) { showToast('Нет данных для экспорта', 'error'); return; }
-      const rows = [
-        ['#', 'Студент', 'Логин', 'Баллы', 'Всего', 'Процент', 'Дата'],
-        ...subsData.map((s, i) => {
-          const pct = s.total_questions ? Math.round(s.score / s.total_questions * 100) : 0;
-          return [i+1, s.student_name || 'Аноним', s.username || '—',
-                  s.score, s.total_questions, pct + '%', fmtDate(s.completed_at)];
-        })
+
+      const headers = [
+        '№', 'Имя', 'Фамилия', 'Логин', 'Email', 'Учреждение',
+        'ID теста', 'Название теста', 'Код теста',
+        'Баллы', 'Всего вопросов', 'Результат (%)', 'Статус', 'Дата сдачи'
       ];
-      const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `quiz_${testData?.code || testId}_results.csv`;
-      a.click();
+
+      const rows = subsData.map((s, i) => {
+        const pct = s.total_questions ? Math.round(s.score / s.total_questions * 100) : 0;
+        return [
+          i + 1,
+          s.first_name  || '',
+          s.last_name   || '',
+          s.username    || 'Аноним',
+          s.email       || '',
+          s.institution || '',
+          testData?.code  || '',
+          testData?.title || '',
+          testData?.code  || '',
+          s.score,
+          s.total_questions,
+          pct,
+          pct >= 60 ? 'Сдал' : 'Не сдал',
+          fmtDate(s.completed_at)
+        ];
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+      // Ширина колонок
+      ws['!cols'] = [
+        { wch: 4  }, // №
+        { wch: 16 }, // Имя
+        { wch: 16 }, // Фамилия
+        { wch: 16 }, // Логин
+        { wch: 26 }, // Email
+        { wch: 22 }, // Учреждение
+        { wch: 8  }, // ID теста
+        { wch: 32 }, // Название теста
+        { wch: 10 }, // Код теста
+        { wch: 8  }, // Баллы
+        { wch: 14 }, // Всего вопросов
+        { wch: 13 }, // Результат (%)
+        { wch: 10 }, // Статус
+        { wch: 18 }, // Дата сдачи
+      ];
+
+      // Заморозить первую строку (заголовки)
+      ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Результаты');
+
+      const safeName = (testData?.title || 'test')
+        .replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40);
+      XLSX.writeFile(wb, `${safeName}_${testData?.code || testId}.xlsx`);
     }
 
     function escHtml(s) {

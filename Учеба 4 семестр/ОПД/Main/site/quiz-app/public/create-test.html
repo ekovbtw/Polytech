@@ -1,9 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Создать тест — PolyTest</title>
+  <title>Создать тест — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -38,9 +40,41 @@
           <!-- Вопросы -->
           <div id="questions-container"></div>
 
-          <button class="btn btn-secondary btn-block" onclick="addQuestion()" style="margin-bottom:32px;">
-            ➕ Добавить вопрос
-          </button>
+          <div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;">
+            <button class="btn btn-secondary" style="flex:1;" onclick="addQuestion()">
+              ➕ Добавить вопрос
+            </button>
+            <button class="btn btn-secondary" style="flex:1;" onclick="openBankModal()">
+              📚 Из банка
+            </button>
+          </div>
+
+          <!-- Система оценивания -->
+          <div id="grading-card" class="card mb-24" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+              <h3 style="font-size:1rem;margin:0;">📊 Рекомендации по оцениванию</h3>
+              <span class="text-gray text-sm">Всего: <strong id="grading-total">0</strong> б. / <strong id="grading-count">0</strong> вопр.</span>
+            </div>
+            <p class="text-gray text-sm" style="margin-bottom:14px;">На основе 60% / 75% / 90% от суммы баллов:</p>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+              <div style="background:var(--gray-light);border-radius:10px;padding:12px;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:700;color:#ef4444;" id="grading-3">0</div>
+                <div class="text-sm" style="margin-top:2px;">Оценка <strong>3</strong></div>
+                <div class="text-gray" style="font-size:11px;">(≥60%)</div>
+              </div>
+              <div style="background:var(--gray-light);border-radius:10px;padding:12px;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:700;color:#f59e0b;" id="grading-4">0</div>
+                <div class="text-sm" style="margin-top:2px;">Оценка <strong>4</strong></div>
+                <div class="text-gray" style="font-size:11px;">(≥75%)</div>
+              </div>
+              <div style="background:var(--gray-light);border-radius:10px;padding:12px;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:700;color:#22c55e;" id="grading-5">0</div>
+                <div class="text-sm" style="margin-top:2px;">Оценка <strong>5</strong></div>
+                <div class="text-gray" style="font-size:11px;">(≥90%)</div>
+              </div>
+            </div>
+            <p class="text-gray text-sm mt-8" style="margin-top:10px;">Измените баллы за каждый вопрос в поле «Баллы» выше.</p>
+          </div>
 
           <!-- Кнопки сохранения -->
           <div style="display:flex; gap:12px; flex-wrap:wrap;">
@@ -110,6 +144,39 @@
             </label>
           </div>
 
+          <!-- Дедлайн -->
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">📅 Дедлайн</div>
+              <div class="toggle-desc">Тест закроется после указанной даты</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-deadline" onchange="toggleDeadlineField()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div id="deadline-field" class="d-none" style="padding:12px 0 4px;">
+            <input id="test-deadline" class="form-input" type="datetime-local">
+          </div>
+
+          <!-- Ограничение по времени -->
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">⏱️ Лимит времени</div>
+              <div class="toggle-desc">Автоотправка через N минут</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-timelimit" onchange="toggleTimelimitField()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div id="timelimit-field" class="d-none" style="padding:12px 0 4px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <input id="test-timelimit" class="form-input" type="number" min="1" max="300" placeholder="Минуты" style="width:120px;margin:0;">
+              <span class="text-gray text-sm">минут</span>
+            </div>
+          </div>
+
           <!-- Код теста (при редактировании) -->
           <div id="code-section" class="d-none" style="margin-top:20px;">
             <hr class="divider" style="margin:0 0 16px;">
@@ -123,6 +190,40 @@
         </div>
       </div>
     </div>
+  <!-- ── Bank import modal ── -->
+  <div class="modal-overlay" id="bank-import-modal">
+    <div class="modal" style="max-width:600px; width:100%;">
+
+      <!-- Step 1: pick bank -->
+      <div id="bank-step-1">
+        <h3>📚 Добавить вопросы из банка</h3>
+        <p class="text-gray text-sm mt-8">Выберите банк:</p>
+        <div id="bank-pick-list" style="margin-top:12px; max-height:380px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeBankModal()">Отмена</button>
+        </div>
+      </div>
+
+      <!-- Step 2: pick questions -->
+      <div id="bank-step-2" class="d-none">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+          <button class="btn btn-secondary btn-sm" onclick="bankBackToStep1()">← Назад</button>
+          <h3 id="bank-step2-title" style="margin:0; font-size:1.1rem;">Вопросы</h3>
+        </div>
+        <p class="text-gray text-sm mt-8">Отметьте вопросы, которые хотите добавить:</p>
+        <div style="display:flex; gap:8px; margin:10px 0;">
+          <button class="btn btn-secondary btn-sm" onclick="bankSelectAll(true)">Выбрать все</button>
+          <button class="btn btn-secondary btn-sm" onclick="bankSelectAll(false)">Снять все</button>
+        </div>
+        <div id="bank-q-list" style="max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeBankModal()">Отмена</button>
+          <button class="btn btn-primary" id="bank-add-btn" onclick="bankAddSelected()">Добавить выбранные</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
   </main>
 
   <script src="/js/common.js"></script>
@@ -160,6 +261,20 @@
         document.getElementById('toggle-results').checked = !!test.show_results;
         document.getElementById('toggle-shuffle').checked = !!test.shuffle_questions;
 
+        if (test.deadline_at) {
+          document.getElementById('toggle-deadline').checked = true;
+          toggleDeadlineField();
+          const d = new Date(test.deadline_at);
+          const pad = n => String(n).padStart(2,'0');
+          document.getElementById('test-deadline').value =
+            `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+        if (test.time_limit_minutes) {
+          document.getElementById('toggle-timelimit').checked = true;
+          toggleTimelimitField();
+          document.getElementById('test-timelimit').value = test.time_limit_minutes;
+        }
+
         // код
         testCode = test.code;
         document.getElementById('test-code-display').textContent = test.code;
@@ -172,24 +287,31 @@
       }
     }
 
-    // ── Переключатель поля пароля ──
+    // ── Переключатели ──
     function togglePasswordField() {
       const show = document.getElementById('toggle-password').checked;
       document.getElementById('password-field').classList.toggle('d-none', !show);
-      // Глазок работает через event delegation в common.js — повторный вызов не нужен
+    }
+    function toggleDeadlineField() {
+      const show = document.getElementById('toggle-deadline').checked;
+      document.getElementById('deadline-field').classList.toggle('d-none', !show);
+    }
+    function toggleTimelimitField() {
+      const show = document.getElementById('toggle-timelimit').checked;
+      document.getElementById('timelimit-field').classList.toggle('d-none', !show);
     }
 
     // ── Добавить вопрос ──
     function addQuestion(data = null) {
       qCount++;
       const qNum = qCount;
+      const qType = data?.type || 'single_choice';
 
-      // Создаём блок вопроса без inline-onclick
       const div = document.createElement('div');
       div.className = 'question-block';
       div.id = `q-block-${qNum}`;
 
-      // Шапка: номер + поле текста + кнопка удаления
+      // ── Шапка: номер + поле текста + кнопка удаления ──
       const header = document.createElement('div');
       header.className = 'question-header';
 
@@ -204,6 +326,23 @@
       textInput.value = data?.question_text || '';
       textInput.style.cssText = 'margin-bottom:0; flex:1;';
 
+      const ptsWrap = document.createElement('div');
+      ptsWrap.style.cssText = 'display:flex;align-items:center;gap:4px;flex-shrink:0;';
+      const ptsLabel = document.createElement('span');
+      ptsLabel.textContent = 'Баллы:';
+      ptsLabel.style.cssText = 'font-size:12px;color:var(--text-gray);white-space:nowrap;';
+      const ptsInput = document.createElement('input');
+      ptsInput.type = 'number';
+      ptsInput.min = '1';
+      ptsInput.max = '100';
+      ptsInput.value = data?.points || 1;
+      ptsInput.className = 'form-input';
+      ptsInput.style.cssText = 'width:60px;margin:0;padding:4px 6px;font-size:13px;';
+      ptsInput.dataset.pts = '1';
+      ptsInput.addEventListener('input', updateGradingCard);
+      ptsWrap.appendChild(ptsLabel);
+      ptsWrap.appendChild(ptsInput);
+
       const delBtn = document.createElement('button');
       delBtn.className = 'btn-icon';
       delBtn.title = 'Удалить вопрос';
@@ -213,39 +352,350 @@
 
       header.appendChild(numBadge);
       header.appendChild(textInput);
+      header.appendChild(ptsWrap);
       header.appendChild(delBtn);
 
-      // Контейнер вариантов ответов
+      // ── Загрузка фото к вопросу ──
+      const imageSection = document.createElement('div');
+      imageSection.style.cssText = 'margin-top:10px;';
+
+      // Скрытый input для хранения URL загруженного изображения
+      const imageUrlInput = document.createElement('input');
+      imageUrlInput.type = 'hidden';
+      imageUrlInput.name = 'image_url';
+      imageUrlInput.value = data?.image_url || '';
+
+      // Кнопка «Добавить фото»
+      const imageUploadBtn = document.createElement('button');
+      imageUploadBtn.className = 'q-image-upload-btn';
+      imageUploadBtn.type = 'button';
+      imageUploadBtn.textContent = '🖼️ Добавить фото к вопросу';
+
+      // Скрытый file input
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.style.display = 'none';
+
+      // Блок предпросмотра изображения
+      const imageWrap = document.createElement('div');
+      imageWrap.className = 'q-image-wrap d-none';
+
+      const imgEl = document.createElement('img');
+      imgEl.style.cssText = 'max-width:100%; max-height:200px; border-radius:8px; display:block;';
+
+      const imgRemoveBtn = document.createElement('button');
+      imgRemoveBtn.className = 'q-image-remove';
+      imgRemoveBtn.type = 'button';
+      imgRemoveBtn.textContent = '✕ Удалить';
+      imgRemoveBtn.addEventListener('click', () => {
+        imageUrlInput.value = '';
+        imgEl.src = '';
+        imageWrap.classList.add('d-none');
+        imageUploadBtn.style.display = '';
+      });
+
+      imageWrap.appendChild(imgEl);
+      imageWrap.appendChild(imgRemoveBtn);
+
+      // Если уже есть изображение (при редактировании)
+      if (data?.image_url) {
+        imgEl.src = data.image_url;
+        imageWrap.classList.remove('d-none');
+        imageUploadBtn.style.display = 'none';
+      }
+
+      imageUploadBtn.addEventListener('click', () => fileInput.click());
+
+      fileInput.addEventListener('change', async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        try {
+          const fd = new FormData();
+          fd.append('image', file);
+          const resp = await fetch('/api/upload/question-image', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+            body: fd
+          });
+          if (!resp.ok) throw new Error('Ошибка загрузки изображения');
+          const result = await resp.json();
+          imageUrlInput.value = result.url || result.image_url || '';
+          imgEl.src = imageUrlInput.value;
+          imageWrap.classList.remove('d-none');
+          imageUploadBtn.style.display = 'none';
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+        fileInput.value = '';
+      });
+
+      imageSection.appendChild(imageUrlInput);
+      imageSection.appendChild(imageUploadBtn);
+      imageSection.appendChild(fileInput);
+      imageSection.appendChild(imageWrap);
+
+      // ── Переключатель типов вопроса ──
+      const typeTabs = document.createElement('div');
+      typeTabs.className = 'q-type-tabs';
+      typeTabs.style.cssText = 'margin-top:12px;';
+
+      const typeOptions = [
+        { type: 'single_choice',   label: '📝 Один ответ' },
+        { type: 'multiple_choice', label: '☑️ Несколько ответов' },
+        { type: 'text_answer',     label: '✏️ Текстовый ответ' },
+        { type: 'number_answer',   label: '🔢 Числовой ответ' },
+        { type: 'file_answer',     label: '📎 Файл/Фото' }
+      ];
+
+      typeOptions.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'q-type-btn' + (opt.type === qType ? ' active' : '');
+        btn.type = 'button';
+        btn.textContent = opt.label;
+        btn.dataset.type = opt.type;
+        btn.addEventListener('click', () => switchQuestionType(qNum, opt.type));
+        typeTabs.appendChild(btn);
+      });
+
+      // ── Область ответов: single_choice ──
+      const areaSC = document.createElement('div');
+      areaSC.id = `answers-sc-${qNum}`;
+      areaSC.className = qType === 'single_choice' ? '' : 'd-none';
+      areaSC.style.marginTop = '12px';
+
       const answersList = document.createElement('div');
       answersList.className = 'answers-list';
       answersList.id = `answers-${qNum}`;
 
-      // Кнопка «+ Добавить вариант ответа»
-      const addBtn = document.createElement('button');
-      addBtn.className = 'add-answer-btn';
-      addBtn.type = 'button';
-      addBtn.textContent = '+ Добавить вариант ответа';
-      addBtn.addEventListener('click', () => addAnswer(qNum));
+      const addAnswerBtn = document.createElement('button');
+      addAnswerBtn.className = 'add-answer-btn';
+      addAnswerBtn.type = 'button';
+      addAnswerBtn.textContent = '+ Добавить вариант ответа';
+      addAnswerBtn.addEventListener('click', () => addAnswer(qNum));
 
-      // Подсказка
-      const hint = document.createElement('p');
-      hint.className = 'text-sm text-gray mt-8';
-      hint.textContent = '⬤ Отметьте правильный вариант радиокнопкой';
+      const hintSC = document.createElement('p');
+      hintSC.className = 'text-sm text-gray mt-8';
+      hintSC.textContent = '⬤ Отметьте правильный вариант радиокнопкой';
 
+      areaSC.appendChild(answersList);
+      areaSC.appendChild(addAnswerBtn);
+      areaSC.appendChild(hintSC);
+
+      // ── Область ответов: multiple_choice ──
+      const areaMC = document.createElement('div');
+      areaMC.id = `answers-mc-${qNum}`;
+      areaMC.className = qType === 'multiple_choice' ? '' : 'd-none';
+      areaMC.style.marginTop = '12px';
+
+      const mcList = document.createElement('div');
+      mcList.className = 'answers-list';
+      mcList.id = `answers-mc-list-${qNum}`;
+
+      const addMCBtn = document.createElement('button');
+      addMCBtn.className = 'add-answer-btn';
+      addMCBtn.type = 'button';
+      addMCBtn.textContent = '+ Добавить вариант ответа';
+      addMCBtn.addEventListener('click', () => addMCAnswer(qNum));
+
+      const hintMC = document.createElement('p');
+      hintMC.className = 'text-sm text-gray mt-8';
+      hintMC.textContent = '☑️ Отметьте все правильные варианты (минимум 2)';
+
+      areaMC.appendChild(mcList);
+      areaMC.appendChild(addMCBtn);
+      areaMC.appendChild(hintMC);
+
+      // ── Область ответов: text_answer ──
+      const areaText = document.createElement('div');
+      areaText.id = `answers-text-${qNum}`;
+      areaText.className = qType === 'text_answer' ? '' : 'd-none';
+      areaText.style.marginTop = '12px';
+
+      const textAnswerLabel = document.createElement('p');
+      textAnswerLabel.className = 'text-sm fw-bold';
+      textAnswerLabel.style.marginBottom = '8px';
+      textAnswerLabel.textContent = 'Правильные ответы (хотя бы один):';
+
+      const correctAnswersList = document.createElement('div');
+      correctAnswersList.className = 'correct-answers-list';
+      correctAnswersList.id = `correct-answers-${qNum}`;
+
+      const addCorrectBtn = document.createElement('button');
+      addCorrectBtn.className = 'add-answer-btn';
+      addCorrectBtn.type = 'button';
+      addCorrectBtn.textContent = '+ Добавить вариант ответа';
+      addCorrectBtn.addEventListener('click', () => addCorrectAnswer(qNum));
+
+      const hintText = document.createElement('p');
+      hintText.className = 'text-sm text-gray mt-8';
+      hintText.textContent = 'Проверка без учёта регистра и пробелов';
+
+      areaText.appendChild(textAnswerLabel);
+      areaText.appendChild(correctAnswersList);
+      areaText.appendChild(addCorrectBtn);
+      areaText.appendChild(hintText);
+
+      // ── Область ответов: number_answer ──
+      const areaNum = document.createElement('div');
+      areaNum.id = `answers-num-${qNum}`;
+      areaNum.className = qType === 'number_answer' ? '' : 'd-none';
+      areaNum.style.marginTop = '12px';
+
+      const numRow1 = document.createElement('div');
+      numRow1.className = 'q-number-row';
+      numRow1.style.cssText = 'display:flex; align-items:center; gap:10px; margin-bottom:10px;';
+      const numLabel1 = document.createElement('label');
+      numLabel1.className = 'text-sm fw-bold';
+      numLabel1.style.whiteSpace = 'nowrap';
+      numLabel1.textContent = 'Правильный ответ:';
+      const numCorrectInput = document.createElement('input');
+      numCorrectInput.type = 'number';
+      numCorrectInput.step = 'any';
+      numCorrectInput.className = 'form-input';
+      numCorrectInput.style.cssText = 'width:180px; margin:0;';
+      numCorrectInput.id = `num-correct-${qNum}`;
+      numCorrectInput.value = data?.answers?.[0]?.answer_text ?? '';
+      numRow1.appendChild(numLabel1);
+      numRow1.appendChild(numCorrectInput);
+
+      const numRow2 = document.createElement('div');
+      numRow2.className = 'q-number-row';
+      numRow2.style.cssText = 'display:flex; align-items:center; gap:10px; margin-bottom:10px;';
+      const numLabel2 = document.createElement('label');
+      numLabel2.className = 'text-sm fw-bold';
+      numLabel2.style.whiteSpace = 'nowrap';
+      numLabel2.textContent = 'Допустимое отклонение ±:';
+      const numToleranceInput = document.createElement('input');
+      numToleranceInput.type = 'number';
+      numToleranceInput.min = '0';
+      numToleranceInput.step = 'any';
+      numToleranceInput.className = 'form-input';
+      numToleranceInput.style.cssText = 'width:120px; margin:0;';
+      numToleranceInput.id = `num-tolerance-${qNum}`;
+      numToleranceInput.value = data?.answer_tolerance ?? '';
+      numRow2.appendChild(numLabel2);
+      numRow2.appendChild(numToleranceInput);
+
+      const hintNum = document.createElement('p');
+      hintNum.className = 'text-sm text-gray mt-8';
+      hintNum.textContent = 'Например: ответ 9.8, отклонение 0.1 — примет 9.7..9.9';
+
+      areaNum.appendChild(numRow1);
+      areaNum.appendChild(numRow2);
+      areaNum.appendChild(hintNum);
+
+      // ── Область ответов: file_answer ──
+      const areaFile = document.createElement('div');
+      areaFile.id = `answers-file-${qNum}`;
+      areaFile.className = qType === 'file_answer' ? '' : 'd-none';
+      areaFile.style.marginTop = '12px';
+
+      const fileInfo = document.createElement('div');
+      fileInfo.className = 'card';
+      fileInfo.style.cssText = 'background:var(--bg-secondary,#f8f9fa); padding:14px 16px; border-radius:8px;';
+      fileInfo.textContent = '📎 Студент загрузит файл или фотографию. Ответ оценивается вручную преподавателем.';
+
+      areaFile.appendChild(fileInfo);
+
+      // ── Сборка блока вопроса ──
       div.appendChild(header);
-      div.appendChild(answersList);
-      div.appendChild(addBtn);
-      div.appendChild(hint);
+      div.appendChild(imageSection);
+      div.appendChild(typeTabs);
+      div.appendChild(areaSC);
+      div.appendChild(areaMC);
+      div.appendChild(areaText);
+      div.appendChild(areaNum);
+      div.appendChild(areaFile);
 
       document.getElementById('questions-container').appendChild(div);
 
-      // Добавляем начальные варианты ответов
-      const answers = data?.answers?.length ? data.answers : [
-        { answer_text: '', is_correct: true  },
-        { answer_text: '', is_correct: false }
-      ];
-      answers.forEach(a => addAnswer(qNum, a));
+      // Заполняем варианты ответов для single_choice
+      if (qType === 'single_choice') {
+        const answers = data?.answers?.length ? data.answers : [
+          { answer_text: '', is_correct: true  },
+          { answer_text: '', is_correct: false }
+        ];
+        answers.forEach(a => addAnswer(qNum, a));
+      }
+
+      // Заполняем варианты для multiple_choice
+      if (qType === 'multiple_choice') {
+        const answers = data?.answers?.length ? data.answers : [
+          { answer_text: '', is_correct: true  },
+          { answer_text: '', is_correct: true  },
+          { answer_text: '', is_correct: false }
+        ];
+        answers.forEach(a => addMCAnswer(qNum, a));
+      }
+
+      // Заполняем правильные ответы для text_answer
+      if (qType === 'text_answer') {
+        const correctAnswers = data?.answers?.length ? data.answers : [{ answer_text: '' }];
+        correctAnswers.forEach(a => addCorrectAnswer(qNum, a.answer_text));
+      }
+
       renumberQuestions();
+      updateGradingCard();
+    }
+
+    // ── Переключение типа вопроса ──
+    function switchQuestionType(qNum, newType) {
+      const block = document.getElementById(`q-block-${qNum}`);
+      if (!block) return;
+
+      // Обновляем активную кнопку типа
+      block.querySelectorAll('.q-type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.type === newType);
+      });
+
+      // Скрываем все области, показываем нужную
+      const areas = ['sc', 'mc', 'text', 'num', 'file'];
+      const typeToArea = {
+        single_choice:   'sc',
+        multiple_choice: 'mc',
+        text_answer:     'text',
+        number_answer:   'num',
+        file_answer:     'file'
+      };
+
+      areas.forEach(area => {
+        const el = document.getElementById(`answers-${area}-${qNum}`);
+        if (el) el.classList.add('d-none');
+      });
+
+      const activeArea = typeToArea[newType];
+      if (activeArea) {
+        const el = document.getElementById(`answers-${activeArea}-${qNum}`);
+        if (el) el.classList.remove('d-none');
+      }
+
+      // Для text_answer: если список пуст, добавляем первую строку
+      if (newType === 'text_answer') {
+        const list = document.getElementById(`correct-answers-${qNum}`);
+        if (list && list.children.length === 0) {
+          addCorrectAnswer(qNum, '');
+        }
+      }
+
+      // Для single_choice: если список пуст, добавляем 2 варианта
+      if (newType === 'single_choice') {
+        const list = document.getElementById(`answers-${qNum}`);
+        if (list && list.children.length === 0) {
+          addAnswer(qNum, { answer_text: '', is_correct: true  });
+          addAnswer(qNum, { answer_text: '', is_correct: false });
+        }
+      }
+
+      // Для multiple_choice: если список пуст, добавляем 3 варианта (2 правильных)
+      if (newType === 'multiple_choice') {
+        const list = document.getElementById(`answers-mc-list-${qNum}`);
+        if (list && list.children.length === 0) {
+          addMCAnswer(qNum, { answer_text: '', is_correct: true  });
+          addMCAnswer(qNum, { answer_text: '', is_correct: true  });
+          addMCAnswer(qNum, { answer_text: '', is_correct: false });
+        }
+      }
     }
 
     // ── Удалить вопрос ──
@@ -253,6 +703,7 @@
       const el = document.getElementById(`q-block-${num}`);
       if (el) el.remove();
       renumberQuestions();
+      updateGradingCard();
     }
 
     function renumberQuestions() {
@@ -262,7 +713,26 @@
       });
     }
 
-    // ── Добавить вариант ответа ──
+    function updateGradingCard() {
+      const card = document.getElementById('grading-card');
+      if (!card) return;
+      let total = 0;
+      document.querySelectorAll('.question-block input[data-pts]').forEach(inp => {
+        total += parseInt(inp.value) || 1;
+      });
+      const count = document.querySelectorAll('.question-block').length;
+      document.getElementById('grading-total').textContent = total;
+      document.getElementById('grading-count').textContent = count;
+      const g3 = Math.ceil(total * 0.60);
+      const g4 = Math.ceil(total * 0.75);
+      const g5 = Math.ceil(total * 0.90);
+      document.getElementById('grading-3').textContent = g3;
+      document.getElementById('grading-4').textContent = g4;
+      document.getElementById('grading-5').textContent = g5;
+      card.style.display = count > 0 ? '' : 'none';
+    }
+
+    // ── Добавить вариант ответа (single_choice) ──
     function addAnswer(qNum, data = null) {
       aCount++;
       const aId  = `a-${qNum}-${aCount}`;
@@ -273,7 +743,6 @@
       div.className = 'answer-row';
       div.id = aId;
 
-      // Радиокнопка «правильный ответ»
       const radio = document.createElement('input');
       radio.type = 'radio';
       radio.name = `correct-${qNum}`;
@@ -281,7 +750,6 @@
       radio.checked = !!(data?.is_correct);
       radio.style.cssText = 'flex-shrink:0; width:18px; height:18px; accent-color:var(--green); cursor:pointer;';
 
-      // Текст варианта
       const textInput = document.createElement('input');
       textInput.className = 'form-input';
       textInput.type = 'text';
@@ -289,7 +757,6 @@
       textInput.value = data?.answer_text || '';
       textInput.style.marginBottom = '0';
 
-      // Кнопка удаления варианта
       const delBtn = document.createElement('button');
       delBtn.className = 'btn-icon';
       delBtn.type = 'button';
@@ -312,36 +779,175 @@
       document.getElementById(aId)?.remove();
     }
 
+    // ── Добавить вариант ответа (multiple_choice, чекбоксы) ──
+    function addMCAnswer(qNum, data = null) {
+      aCount++;
+      const aId  = `mc-${qNum}-${aCount}`;
+      const list = document.getElementById(`answers-mc-list-${qNum}`);
+      if (!list) return;
+
+      const div = document.createElement('div');
+      div.className = 'answer-row';
+      div.id = aId;
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.title = 'Правильный ответ';
+      cb.checked = !!(data?.is_correct);
+      cb.style.cssText = 'flex-shrink:0; width:18px; height:18px; accent-color:var(--green); cursor:pointer;';
+
+      const textInput = document.createElement('input');
+      textInput.className = 'form-input';
+      textInput.type = 'text';
+      textInput.placeholder = 'Вариант ответа…';
+      textInput.value = data?.answer_text || '';
+      textInput.style.marginBottom = '0';
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-icon';
+      delBtn.type = 'button';
+      delBtn.title = 'Удалить вариант';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => {
+        if (list.children.length <= 2) { showToast('Минимум 2 варианта ответа', 'error'); return; }
+        document.getElementById(aId)?.remove();
+      });
+
+      div.appendChild(cb);
+      div.appendChild(textInput);
+      div.appendChild(delBtn);
+      list.appendChild(div);
+    }
+
+    // ── Добавить правильный ответ (text_answer) ──
+    function addCorrectAnswer(qNum, value = '') {
+      aCount++;
+      const caId = `ca-${qNum}-${aCount}`;
+      const list = document.getElementById(`correct-answers-${qNum}`);
+      if (!list) return;
+
+      const div = document.createElement('div');
+      div.className = 'correct-answer-row';
+      div.id = caId;
+      div.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px;';
+
+      const textInput = document.createElement('input');
+      textInput.className = 'form-input';
+      textInput.type = 'text';
+      textInput.placeholder = 'Правильный ответ…';
+      textInput.value = value;
+      textInput.style.cssText = 'margin-bottom:0; flex:1;';
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-icon';
+      delBtn.type = 'button';
+      delBtn.title = 'Удалить вариант';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => {
+        if (list.children.length <= 1) {
+          showToast('Минимум 1 правильный ответ', 'error');
+          return;
+        }
+        document.getElementById(caId)?.remove();
+      });
+
+      div.appendChild(textInput);
+      div.appendChild(delBtn);
+      list.appendChild(div);
+    }
+
     // ── Сбор данных из формы ──
     function collectFormData() {
-      const title = document.getElementById('test-title').value.trim();
-      const desc  = document.getElementById('test-desc').value.trim();
+      const title  = document.getElementById('test-title').value.trim();
+      const desc   = document.getElementById('test-desc').value.trim();
       const usePwd = document.getElementById('toggle-password').checked;
       const password = usePwd ? document.getElementById('test-password').value : null;
 
       const questions = [];
       document.querySelectorAll('.question-block').forEach((block, qi) => {
-        const qText   = block.querySelector('input[type=text]').value.trim();
-        const answers = [];
-        const ansRows = block.querySelectorAll('.answer-row');
-        ansRows.forEach(row => {
-          const radio     = row.querySelector('input[type=radio]');
-          const textInput = row.querySelector('input[type=text]');
-          answers.push({
-            answer_text: textInput.value.trim(),
-            is_correct:  radio.checked ? 1 : 0
+        // Текст вопроса — первый input[type=text] в заголовке
+        const qText = block.querySelector('.question-header input[type=text]').value.trim();
+
+        // Тип вопроса
+        const activeTypeBtn = block.querySelector('.q-type-btn.active');
+        const qType = activeTypeBtn ? activeTypeBtn.dataset.type : 'single_choice';
+
+        // URL изображения
+        const imageUrlInput = block.querySelector('input[name=image_url]');
+        const imageUrl = imageUrlInput ? imageUrlInput.value.trim() : '';
+
+        let answers = [];
+        let answerTolerance = null;
+
+        if (qType === 'single_choice') {
+          block.querySelectorAll(`#answers-${block.id.replace('q-block-','')} .answer-row`).forEach(row => {
+            const radio     = row.querySelector('input[type=radio]');
+            const textInput = row.querySelector('input[type=text]');
+            answers.push({ answer_text: textInput.value.trim(), is_correct: radio.checked ? 1 : 0 });
           });
-        });
-        questions.push({ question_text: qText, question_order: qi, answers });
+
+        } else if (qType === 'multiple_choice') {
+          const qNum = block.id.replace('q-block-', '');
+          block.querySelectorAll(`#answers-mc-list-${qNum} .answer-row`).forEach(row => {
+            const cb        = row.querySelector('input[type=checkbox]');
+            const textInput = row.querySelector('input[type=text]');
+            answers.push({ answer_text: textInput.value.trim(), is_correct: cb.checked ? 1 : 0 });
+          });
+
+        } else if (qType === 'text_answer') {
+          const caRows = block.querySelectorAll('.correct-answer-row');
+          caRows.forEach(row => {
+            const textInput = row.querySelector('input[type=text]');
+            const val = textInput ? textInput.value.trim() : '';
+            if (val) {
+              answers.push({ answer_text: val, is_correct: 1 });
+            }
+          });
+
+        } else if (qType === 'number_answer') {
+          const numInput = block.querySelector(`#num-correct-${block.id.replace('q-block-', '')}`);
+          const tolInput = block.querySelector(`#num-tolerance-${block.id.replace('q-block-', '')}`);
+          const numVal = numInput ? numInput.value.trim() : '';
+          if (numVal !== '') {
+            answers.push({ answer_text: numVal, is_correct: 1 });
+          }
+          const tolVal = tolInput ? tolInput.value.trim() : '';
+          answerTolerance = tolVal !== '' ? parseFloat(tolVal) : 0;
+
+        } else if (qType === 'file_answer') {
+          answers = [];
+        }
+
+        const ptsEl = block.querySelector('input[data-pts]');
+        const pts = ptsEl ? (parseInt(ptsEl.value) || 1) : 1;
+
+        const qData = {
+          question_text:  qText,
+          question_order: qi,
+          type:           qType,
+          answers,
+          points:         pts
+        };
+        if (imageUrl) qData.image_url = imageUrl;
+        if (answerTolerance !== null) qData.answer_tolerance = answerTolerance;
+
+        questions.push(qData);
       });
+
+      const useDeadline  = document.getElementById('toggle-deadline').checked;
+      const useTimelimit = document.getElementById('toggle-timelimit').checked;
+      const deadlineVal  = useDeadline  ? document.getElementById('test-deadline').value  : null;
+      const timelimitVal = useTimelimit ? parseInt(document.getElementById('test-timelimit').value) || null : null;
 
       return {
         title,
-        description: desc,
+        description:        desc,
         password:           password || null,
         is_anonymous:       document.getElementById('toggle-anon').checked,
         show_results:       document.getElementById('toggle-results').checked,
         shuffle_questions:  document.getElementById('toggle-shuffle').checked,
+        deadline_at:        deadlineVal ? new Date(deadlineVal).toISOString() : null,
+        time_limit_minutes: timelimitVal,
         questions
       };
     }
@@ -368,7 +974,6 @@
         showToast(editId ? 'Тест обновлён!' : 'Тест создан!', 'success');
 
         if (!editId) {
-          // показываем диалог с кодом и редиректим
           setTimeout(() => { window.location.href = `/dashboard.html`; }, 1800);
         }
       } catch (err) {
@@ -387,6 +992,119 @@
       return String(s)
         .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
         .replace(/"/g,'&quot;');
+    }
+
+    /* ── Bank import modal ─────────────────────────── */
+    let bankModalQs = [];
+    let _banksList  = [];  // stored to look up name by id
+
+    async function openBankModal() {
+      document.getElementById('bank-step-1').classList.remove('d-none');
+      document.getElementById('bank-step-2').classList.add('d-none');
+      const listEl = document.getElementById('bank-pick-list');
+      listEl.innerHTML = '<div class="text-gray text-sm">Загрузка…</div>';
+      document.getElementById('bank-import-modal').classList.add('open');
+      try {
+        _banksList = await API.get('/api/banks');
+        if (!_banksList.length) {
+          listEl.innerHTML = '<div class="empty-state" style="padding:24px;"><p>У вас нет доступных банков. Создайте банк или добавьте чужой в избранное.</p></div>';
+          return;
+        }
+        listEl.innerHTML = _banksList.map(b => {
+          const sub = b.is_favorite
+            ? `<span class="badge badge-blue" style="font-size:11px;">❤️ ${escHtmlCT(b.author_username ? '@'+b.author_username : 'избранное')}</span>`
+            : `<span class="badge badge-gray" style="font-size:11px;">${b.is_public ? '🌐 Публичный' : '🔒 Приватный'}</span>`;
+          return `
+            <div style="border:2px solid var(--gray-light); border-radius:var(--radius); padding:14px 16px;
+                        cursor:pointer; transition:border-color .15s;"
+                 onmouseover="this.style.borderColor='var(--blue)'"
+                 onmouseout="this.style.borderColor='var(--gray-light)'"
+                 onclick="bankPickBank(${b.id})">
+              <div style="font-weight:700; font-size:15px;">${escHtmlCT(b.name)}</div>
+              <div style="display:flex; gap:8px; margin-top:6px; align-items:center;">
+                ${sub}
+                <span class="text-gray text-sm">📋 ${b.question_count ?? 0} вопросов</span>
+              </div>
+            </div>`;
+        }).join('');
+      } catch (err) {
+        listEl.innerHTML = `<div class="text-gray text-sm">Ошибка: ${escHtmlCT(err.message)}</div>`;
+      }
+    }
+
+    async function bankPickBank(id) {
+      const bank = _banksList.find(b => b.id === id);
+      document.getElementById('bank-step2-title').textContent = bank?.name || '';
+      const listEl = document.getElementById('bank-q-list');
+      listEl.innerHTML = '<div class="text-gray text-sm">Загрузка…</div>';
+      document.getElementById('bank-step-1').classList.add('d-none');
+      document.getElementById('bank-step-2').classList.remove('d-none');
+      try {
+        const data = await API.get(`/api/banks/${id}`);
+        bankModalQs = data.questions || [];
+        if (!bankModalQs.length) {
+          listEl.innerHTML = '<div class="text-gray text-sm">В этом банке нет вопросов.</div>';
+          return;
+        }
+        listEl.innerHTML = bankModalQs.map((q, i) => `
+          <label style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
+                         border:2px solid var(--gray-light); border-radius:var(--radius); cursor:pointer;
+                         transition:border-color .15s;"
+                 onmouseover="this.style.borderColor='var(--blue)'"
+                 onmouseout="this.style.borderColor=this.querySelector('input').checked?'var(--green)':'var(--gray-light)'"
+                 >
+            <input type="checkbox" data-qi="${i}" style="margin-top:3px; width:16px; height:16px; accent-color:var(--green); flex-shrink:0;"
+                   onchange="this.closest('label').style.borderColor=this.checked?'var(--green)':'var(--gray-light)'">
+            <div>
+              <div style="font-weight:600; font-size:14px;">${escHtmlCT(q.question_text)}</div>
+              ${q.answers?.length ? `<div class="text-gray text-sm mt-8">${q.answers.map(a=>
+                `<span style="display:inline-block;margin-right:8px;">${a.is_correct?'✅':'○'} ${escHtmlCT(a.answer_text)}</span>`
+              ).join('')}</div>` : ''}
+            </div>
+          </label>`).join('');
+      } catch (err) {
+        listEl.innerHTML = `<div class="text-gray text-sm">Ошибка: ${escHtmlCT(err.message)}</div>`;
+      }
+    }
+
+    function bankBackToStep1() {
+      document.getElementById('bank-step-1').classList.remove('d-none');
+      document.getElementById('bank-step-2').classList.add('d-none');
+    }
+
+    function bankSelectAll(checked) {
+      document.querySelectorAll('#bank-q-list input[type="checkbox"]').forEach(cb => {
+        cb.checked = checked;
+        cb.closest('label').style.borderColor = checked ? 'var(--green)' : 'var(--gray-light)';
+      });
+    }
+
+    function bankAddSelected() {
+      const checked = [...document.querySelectorAll('#bank-q-list input[type="checkbox"]:checked')];
+      if (!checked.length) { showToast('Выберите хотя бы один вопрос', 'error'); return; }
+      checked.forEach(cb => {
+        const q = bankModalQs[Number(cb.dataset.qi)];
+        if (!q) return;
+        addQuestion({
+          question_text: q.question_text,
+          type: q.answers?.length ? 'single_choice' : 'text_answer',
+          answers: (q.answers || []).map(a => ({ answer_text: a.answer_text, is_correct: a.is_correct }))
+        });
+      });
+      closeBankModal();
+      showToast(`Добавлено ${checked.length} вопр.`, 'success');
+    }
+
+    function closeBankModal() {
+      document.getElementById('bank-import-modal').classList.remove('open');
+    }
+
+    document.getElementById('bank-import-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeBankModal();
+    });
+
+    function escHtmlCT(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
   </script>
 </body>

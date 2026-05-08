@@ -1,0 +1,524 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Класс — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ── Member row ── */
+    .member-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--gray-light);
+    }
+    .member-row:last-child { border-bottom: none; }
+
+    .member-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--green-light);
+      color: var(--green-dark);
+      font-family: var(--font-heading);
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+
+    .member-info { flex: 1; min-width: 0; }
+    .member-name {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--almost-black);
+    }
+    .member-date { font-size: 12px; color: var(--graphite); margin-top: 2px; }
+
+    /* ── Test row (teacher assigned tests) ── */
+    .assigned-test-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--gray-light);
+      flex-wrap: wrap;
+    }
+    .assigned-test-row:last-child { border-bottom: none; }
+
+    .assigned-test-title {
+      font-weight: 700;
+      font-size: 15px;
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Student test item ── */
+    .class-test-item {
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      transition: border-color var(--transition);
+    }
+    .class-test-item:last-child { margin-bottom: 0; }
+    .class-test-item:hover { border-color: var(--green); }
+    .class-test-item.expired { opacity: 0.65; }
+
+    .class-test-title {
+      font-weight: 700;
+      font-size: 15px;
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .class-test-badges { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+    .badge-red { background: #ffebee; color: #c62828; }
+
+    /* ── Add-test panel ── */
+    .add-test-panel {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      padding-top: 16px;
+      border-top: 2px solid var(--gray-light);
+      margin-top: 16px;
+    }
+    .add-test-panel .form-group { margin-bottom: 0; flex: 1; min-width: 200px; }
+  </style>
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:28px; flex-wrap:wrap;">
+        <a href="/dashboard.html" class="btn btn-secondary btn-sm">← Назад</a>
+        <div id="page-loading" class="text-gray">Загрузка…</div>
+      </div>
+
+      <!-- ── ПРЕПОДАВАТЕЛЬ ── -->
+      <div id="teacher-view" class="d-none">
+
+        <div class="dashboard-header">
+          <div>
+            <h1 style="font-family:var(--font-heading); font-size:1.8rem;" id="teacher-class-name">—</h1>
+            <div style="display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+              <span class="badge badge-blue" id="teacher-class-code" style="font-size:15px; letter-spacing:2px;">——</span>
+              <button class="btn btn-secondary btn-sm" onclick="copyClassCode()">📋 Скопировать код</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Участники -->
+        <div class="card mb-24">
+          <div class="card-header">
+            <h2 class="card-title">👥 Участники</h2>
+            <span class="badge badge-gray" id="members-count">—</span>
+          </div>
+          <div id="members-list">
+            <div class="loading text-gray text-sm">Загрузка…</div>
+          </div>
+        </div>
+
+        <!-- Назначенные тесты -->
+        <div class="card mb-24">
+          <div class="card-header">
+            <h2 class="card-title">📋 Тесты класса</h2>
+          </div>
+
+          <div id="assigned-tests-list">
+            <div class="loading text-gray text-sm">Загрузка…</div>
+          </div>
+
+          <!-- Добавить тест -->
+          <div class="add-test-panel">
+            <div class="form-group">
+              <label class="form-label">Добавить тест в класс</label>
+              <select id="test-select" class="form-select">
+                <option value="">— выберите тест —</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="addTestToClass()" id="add-test-btn">Добавить</button>
+          </div>
+          <div id="add-test-alert" class="alert" style="margin-top:12px; margin-bottom:0;"></div>
+        </div>
+
+      </div>
+
+      <!-- ── СТУДЕНТ ── -->
+      <div id="student-view" class="d-none">
+
+        <div class="dashboard-header">
+          <div>
+            <h1 style="font-family:var(--font-heading); font-size:1.8rem;" id="student-class-name">—</h1>
+            <div class="text-gray mt-8" id="student-class-teacher"></div>
+          </div>
+          <button class="btn btn-danger" onclick="openLeaveModal()" id="leave-btn">🚪 Покинуть класс</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">📋 Тесты класса</h2>
+          </div>
+          <div id="student-tests-list">
+            <div class="loading text-gray text-sm">Загрузка…</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Модал: удалить участника -->
+  <div class="modal-overlay" id="remove-member-modal">
+    <div class="modal">
+      <h3>Удалить участника?</h3>
+      <p class="text-gray">Студент потеряет доступ к классу и его тестам.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeRemoveMemberModal()">Отмена</button>
+        <button class="btn btn-danger" id="confirm-remove-member-btn" onclick="confirmRemoveMember()">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модал: убрать тест из класса -->
+  <div class="modal-overlay" id="remove-test-modal">
+    <div class="modal">
+      <h3>Убрать тест из класса?</h3>
+      <p class="text-gray">Студенты больше не увидят этот тест в классе.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeRemoveTestModal()">Отмена</button>
+        <button class="btn btn-danger" id="confirm-remove-test-btn" onclick="confirmRemoveTest()">Убрать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модал: покинуть класс (студент) -->
+  <div class="modal-overlay" id="leave-modal">
+    <div class="modal">
+      <h3>Покинуть класс?</h3>
+      <p class="text-gray">Вы выйдете из класса и потеряете доступ к его тестам.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeLeaveModal()">Отмена</button>
+        <button class="btn btn-danger" id="confirm-leave-btn" onclick="confirmLeave()">Выйти</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw new Error('not auth');
+    renderNavbar();
+
+    const params  = new URLSearchParams(location.search);
+    const classId = params.get('id');
+    if (!classId) { window.location.href = '/dashboard.html'; throw new Error(); }
+
+    const user = Auth.getUser();
+
+    let classCode          = null;
+    let removeMemberTarget = null;
+    let removeTestTarget   = null;
+
+    /* ── Bootstrap ── */
+    (async () => {
+      try {
+        const cls = await API.get(`/api/classes/${classId}`);
+        document.getElementById('page-loading').remove();
+
+        if (user.role === 'teacher') {
+          showTeacherView(cls);
+        } else {
+          showStudentView(cls);
+        }
+      } catch (err) {
+        const code = err.status;
+        if (code === 403 || code === 404 || err.message.includes('403') || err.message.includes('404') || err.message.includes('не найден') || err.message.includes('доступ')) {
+          window.location.href = '/dashboard.html';
+          return;
+        }
+        document.getElementById('page-loading').innerHTML =
+          `<span class="text-gray">Ошибка: ${escHtml(err.message)}</span>`;
+      }
+    })();
+
+    /* ══════════════════════ TEACHER ══════════════════════ */
+
+    function showTeacherView(cls) {
+      classCode = cls.code;
+      document.getElementById('teacher-view').classList.remove('d-none');
+      document.getElementById('teacher-class-name').textContent = cls.name;
+      document.getElementById('teacher-class-code').textContent = cls.code;
+
+      loadMembers();
+      loadAssignedTests();
+      loadMyTestsForSelect();
+    }
+
+    /* ── Участники ── */
+    async function loadMembers() {
+      const wrap = document.getElementById('members-list');
+      try {
+        const members = await API.get(`/api/classes/${classId}/members`);
+        document.getElementById('members-count').textContent = `${members.length} чел.`;
+
+        if (!members.length) {
+          wrap.innerHTML = `<p class="text-gray text-sm" style="padding:12px 0;">Участников пока нет</p>`;
+          return;
+        }
+
+        wrap.innerHTML = members.map(m => `
+          <div class="member-row" id="member-${m.id}">
+            <div class="member-avatar">${escHtml(m.username.charAt(0))}</div>
+            <div class="member-info">
+              <div class="member-name">${escHtml(m.username)}</div>
+              <div class="member-date">Вступил: ${fmtDate(m.joined_at)}</div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="openRemoveMemberModal(${m.id})">Удалить</button>
+          </div>`).join('');
+      } catch (err) {
+        wrap.innerHTML = `<p class="text-gray text-sm">Не удалось загрузить участников</p>`;
+      }
+    }
+
+    function openRemoveMemberModal(userId) {
+      removeMemberTarget = userId;
+      document.getElementById('remove-member-modal').classList.add('open');
+    }
+    function closeRemoveMemberModal() {
+      removeMemberTarget = null;
+      document.getElementById('remove-member-modal').classList.remove('open');
+    }
+    async function confirmRemoveMember() {
+      if (!removeMemberTarget) return;
+      const btn = document.getElementById('confirm-remove-member-btn');
+      btn.disabled = true;
+      try {
+        await API.delete(`/api/classes/${classId}/members/${removeMemberTarget}`);
+        const row = document.getElementById(`member-${removeMemberTarget}`);
+        if (row) row.remove();
+        closeRemoveMemberModal();
+        showToast('Участник удалён', 'success');
+        // update counter
+        const wrap = document.getElementById('members-list');
+        const count = wrap.querySelectorAll('.member-row').length;
+        document.getElementById('members-count').textContent = `${count} чел.`;
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+      }
+    }
+    document.getElementById('remove-member-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeRemoveMemberModal();
+    });
+
+    /* ── Назначенные тесты ── */
+    async function loadAssignedTests() {
+      const wrap = document.getElementById('assigned-tests-list');
+      try {
+        const tests = await API.get(`/api/classes/${classId}/tests`);
+
+        if (!tests.length) {
+          wrap.innerHTML = `<p class="text-gray text-sm" style="padding:12px 0;">Тестов пока нет. Добавьте первый ниже.</p>`;
+          return;
+        }
+
+        wrap.innerHTML = tests.map(t => `
+          <div class="assigned-test-row" id="atest-${t.id}">
+            <div class="assigned-test-title">${escHtml(t.title)}</div>
+            <span class="badge badge-green">${escHtml(t.code)}</span>
+            ${t.deadline_at ? `<span class="badge badge-yellow">📅 до ${fmtDate(t.deadline_at)}</span>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="openRemoveTestModal(${t.id})">Убрать</button>
+          </div>`).join('');
+      } catch (err) {
+        wrap.innerHTML = `<p class="text-gray text-sm">Не удалось загрузить тесты</p>`;
+      }
+    }
+
+    function openRemoveTestModal(testId) {
+      removeTestTarget = testId;
+      document.getElementById('remove-test-modal').classList.add('open');
+    }
+    function closeRemoveTestModal() {
+      removeTestTarget = null;
+      document.getElementById('remove-test-modal').classList.remove('open');
+    }
+    async function confirmRemoveTest() {
+      if (!removeTestTarget) return;
+      const btn = document.getElementById('confirm-remove-test-btn');
+      btn.disabled = true;
+      try {
+        await API.delete(`/api/classes/${classId}/tests/${removeTestTarget}`);
+        const row = document.getElementById(`atest-${removeTestTarget}`);
+        if (row) row.remove();
+        closeRemoveTestModal();
+        showToast('Тест убран из класса', 'success');
+        // show empty message if none left
+        const wrap = document.getElementById('assigned-tests-list');
+        if (!wrap.querySelector('.assigned-test-row')) {
+          wrap.innerHTML = `<p class="text-gray text-sm" style="padding:12px 0;">Тестов пока нет. Добавьте первый ниже.</p>`;
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+      }
+    }
+    document.getElementById('remove-test-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeRemoveTestModal();
+    });
+
+    /* ── Добавить тест: заполнить select ── */
+    async function loadMyTestsForSelect() {
+      const sel = document.getElementById('test-select');
+      try {
+        const tests = await API.get('/api/tests');
+        if (!tests.length) {
+          sel.innerHTML = '<option value="">— у вас нет тестов —</option>';
+          return;
+        }
+        sel.innerHTML = '<option value="">— выберите тест —</option>' +
+          tests.map(t => `<option value="${t.id}">${escHtml(t.title)} (${escHtml(t.code)})</option>`).join('');
+      } catch (err) {
+        sel.innerHTML = '<option value="">— не удалось загрузить —</option>';
+      }
+    }
+
+    async function addTestToClass() {
+      const sel   = document.getElementById('test-select');
+      const alert = document.getElementById('add-test-alert');
+      const btn   = document.getElementById('add-test-btn');
+      hideAlert(alert);
+
+      const testId = sel.value;
+      if (!testId) { showAlert(alert, 'Выберите тест из списка'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Добавляем…';
+      try {
+        await API.post(`/api/classes/${classId}/tests`, { test_id: Number(testId) });
+        showToast('Тест добавлен в класс', 'success');
+        sel.value = '';
+        loadAssignedTests();
+      } catch (err) {
+        showAlert(alert, err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Добавить';
+      }
+    }
+
+    function copyClassCode() {
+      if (classCode) copyToClipboard(classCode, 'Код класса скопирован!');
+    }
+
+    /* ══════════════════════ STUDENT ══════════════════════ */
+
+    function showStudentView(cls) {
+      classCode = cls.code;
+      document.getElementById('student-view').classList.remove('d-none');
+      document.getElementById('student-class-name').textContent = cls.name;
+      document.getElementById('student-class-teacher').textContent = cls.teacher_name
+        ? `👨‍🏫 ${cls.teacher_name}` : '';
+
+      loadStudentTests();
+    }
+
+    async function loadStudentTests() {
+      const wrap = document.getElementById('student-tests-list');
+      try {
+        const tests = await API.get(`/api/classes/${classId}/tests`);
+
+        if (!tests.length) {
+          wrap.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">📋</div>
+              <h3>Тестов пока нет</h3>
+              <p>Преподаватель ещё не добавил тесты в этот класс</p>
+            </div>`;
+          return;
+        }
+
+        wrap.innerHTML = tests.map(t => {
+          const now     = new Date();
+          const expired = t.deadline_at && new Date(t.deadline_at) < now;
+          const expiredClass = expired ? ' expired' : '';
+
+          const codeBadge = `<span class="badge badge-green">${escHtml(t.code)}</span>`;
+          const timeBadge = t.time_limit_minutes
+            ? `<span class="badge badge-blue">⏱ ${t.time_limit_minutes} мин</span>` : '';
+          const deadlineBadge = t.deadline_at
+            ? `<span class="badge ${expired ? 'badge-red' : 'badge-yellow'}">
+                 📅 до ${fmtDate(t.deadline_at)}${expired ? ' ⚠' : ''}
+               </span>` : '';
+
+          const btnHref  = expired ? '#' : `/take-test.html?id=${t.id}&code=${t.code}`;
+          const btnClass = expired ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm';
+          const btnAttr  = expired ? 'disabled title="Срок сдачи истёк"' : '';
+
+          return `
+            <div class="class-test-item${expiredClass}">
+              <div class="class-test-title">${escHtml(t.title)}</div>
+              <div class="class-test-badges">
+                ${codeBadge}${timeBadge}${deadlineBadge}
+              </div>
+              <a href="${btnHref}" class="${btnClass}" ${btnAttr}
+                 style="${expired ? 'pointer-events:none; opacity:0.5;' : ''}">
+                Начать тест →
+              </a>
+            </div>`;
+        }).join('');
+      } catch (err) {
+        wrap.innerHTML = `<p class="text-gray text-sm">Не удалось загрузить тесты</p>`;
+      }
+    }
+
+    /* ── Покинуть класс (студент) ── */
+    function openLeaveModal() {
+      document.getElementById('leave-modal').classList.add('open');
+    }
+    function closeLeaveModal() {
+      document.getElementById('leave-modal').classList.remove('open');
+    }
+    async function confirmLeave() {
+      const btn = document.getElementById('confirm-leave-btn');
+      btn.disabled = true;
+      try {
+        await API.delete(`/api/classes/${classId}/leave`);
+        showToast('Вы покинули класс', 'success');
+        setTimeout(() => { window.location.href = '/my-classes.html'; }, 1200);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+      }
+    }
+    document.getElementById('leave-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeLeaveModal();
+    });
+
+    /* ── Утилиты ── */
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,431 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Генератор тестов — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .bank-pick-card {
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      cursor: pointer;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .bank-pick-card:hover { border-color: var(--green); box-shadow: 0 2px 12px rgba(88,204,2,.12); }
+    .bank-pick-card.selected {
+      border-color: var(--green);
+      background: var(--green-light);
+      box-shadow: 0 2px 16px rgba(88,204,2,.18);
+    }
+    .bank-pick-card.disabled { opacity: .45; cursor: not-allowed; }
+    .bank-pick-icon { font-size: 2rem; flex-shrink: 0; }
+    .bank-pick-info { flex: 1; min-width: 0; }
+    .bank-pick-name {
+      font-family: var(--font-heading);
+      font-size: 1.05rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bank-pick-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+    .bank-pick-check { font-size: 1.4rem; opacity: 0; transition: opacity .15s; flex-shrink: 0; }
+    .bank-pick-card.selected .bank-pick-check { opacity: 1; }
+
+    .q-slider-wrap { margin-top: 10px; }
+    .q-slider-wrap input[type=range] {
+      width: 100%;
+      accent-color: var(--green);
+      height: 6px;
+      cursor: pointer;
+    }
+    .q-count-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .q-count-num {
+      font-family: var(--font-heading);
+      font-size: 2rem;
+      color: var(--green);
+      line-height: 1;
+    }
+    .q-count-hint { font-size: 13px; color: var(--graphite); }
+
+    .settings-locked { opacity: .4; pointer-events: none; transition: opacity .3s; }
+    .settings-unlocked { opacity: 1; pointer-events: auto; transition: opacity .3s; }
+  </style>
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:28px; flex-wrap:wrap;">
+        <a href="/dashboard.html" class="btn btn-secondary btn-sm">← Назад</a>
+        <h1 style="font-family:var(--font-heading); font-size:1.8rem;">🎲 Генератор тестов</h1>
+      </div>
+
+      <div class="create-layout">
+
+        <!-- ── Левая колонка ── -->
+        <div>
+
+          <!-- Шаг 1: выбор банка -->
+          <div class="card mb-24">
+            <h3 style="font-family:var(--font-heading); margin-bottom:4px;">1. Выберите банк вопросов</h3>
+            <p class="text-gray text-sm" style="margin-bottom:16px;">Доступны ваши банки и добавленные в избранное</p>
+            <div id="banks-loading" class="text-gray text-sm">Загрузка…</div>
+            <div id="banks-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+          </div>
+
+          <!-- Шаг 2: настройка (скрыт до выбора банка) -->
+          <div class="card mb-24 d-none" id="config-card">
+            <h3 style="font-family:var(--font-heading); margin-bottom:20px;">2. Настройте параметры</h3>
+
+            <div class="form-group">
+              <label class="form-label">Название теста *</label>
+              <input id="gen-title" class="form-input" type="text"
+                     placeholder="Название теста" maxlength="120">
+            </div>
+
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Количество случайных вопросов</label>
+              <div class="q-count-row" style="margin-top:10px;">
+                <div>
+                  <span class="q-count-num" id="q-count-display">10</span>
+                  <span class="q-count-hint" id="q-count-max"> из …</span>
+                </div>
+                <span class="text-gray text-sm" id="q-count-pct"></span>
+              </div>
+              <div class="q-slider-wrap">
+                <input id="q-count-slider" type="range" min="1" max="10" value="10"
+                       oninput="onSliderInput(this.value)">
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                <span class="text-gray" style="font-size:11px;">1</span>
+                <span class="text-gray" style="font-size:11px;" id="q-slider-max-label">10</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Кнопка генерации -->
+          <div id="gen-actions" class="d-none">
+            <div id="gen-alert" class="alert"></div>
+            <button class="btn btn-primary btn-lg btn-block" id="gen-btn" onclick="generateTest()">
+              🎲 Сгенерировать тест
+            </button>
+          </div>
+
+        </div>
+
+        <!-- ── Правая колонка: настройки ── -->
+        <div class="settings-card settings-locked" id="settings-card">
+          <h3>⚙️ Настройки теста</h3>
+          <p class="text-gray text-sm mb-16" style="margin-top:4px;" id="settings-hint">
+            Выберите банк, чтобы активировать
+          </p>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">🔒 Вход по паролю</div>
+              <div class="toggle-desc">Студенты должны ввести пароль</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-password" onchange="togglePasswordField()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div id="password-field" class="d-none" style="padding:12px 0 4px;">
+            <div class="password-wrapper">
+              <input id="gen-password" class="form-input" type="password" placeholder="Пароль к тесту">
+              <button type="button" class="password-toggle">👁️</button>
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">👤 Анонимный тест</div>
+              <div class="toggle-desc">Не требовать имя студента</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-anon">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">📊 Студент видит результат</div>
+              <div class="toggle-desc">Показать оценку после прохождения</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-results" checked>
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">🔀 Перемешать вопросы</div>
+              <div class="toggle-desc">Уникальный порядок для каждого</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-shuffle" checked>
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">⏱️ Лимит времени</div>
+              <div class="toggle-desc">Автоотправка через N минут</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-timelimit" onchange="toggleTimelimitField()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div id="timelimit-field" class="d-none" style="padding:12px 0 4px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <input id="gen-timelimit" class="form-input" type="number"
+                     min="1" max="300" placeholder="Минуты" style="width:120px; margin:0;">
+              <span class="text-gray text-sm">минут</span>
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">📅 Дедлайн</div>
+              <div class="toggle-desc">Тест закроется после указанной даты</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-deadline" onchange="toggleDeadlineField()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div id="deadline-field" class="d-none" style="padding:12px 0 4px;">
+            <input id="gen-deadline" class="form-input" type="datetime-local">
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    if (!Auth.requireAuth('teacher')) throw new Error();
+    renderNavbar();
+
+    let selectedBankId   = null;
+    let selectedBankData = null;
+    let _titleAutoFilled = false;
+
+    /* ── Load banks ──────────────────────────────────── */
+    (async () => {
+      try {
+        const banks = await API.get('/api/banks');
+        document.getElementById('banks-loading').classList.add('d-none');
+        const list = document.getElementById('banks-list');
+
+        if (!banks.length) {
+          list.innerHTML = `
+            <div class="empty-state" style="padding:32px 20px;">
+              <div class="empty-icon">📚</div>
+              <h3>Нет доступных банков</h3>
+              <p>Создайте банк вопросов или добавьте публичный в избранное.</p>
+              <a href="/question-banks.html" class="btn btn-primary mt-16">Перейти к банкам →</a>
+            </div>`;
+          return;
+        }
+
+        list.innerHTML = banks.map(b => bankCardHtml(b)).join('');
+      } catch (err) {
+        document.getElementById('banks-loading').textContent = 'Ошибка: ' + err.message;
+      }
+    })();
+
+    function bankCardHtml(b) {
+      const isEmpty  = (b.question_count ?? 0) === 0;
+      const authorBadge = b.is_favorite
+        ? `<span class="badge badge-blue" style="font-size:11px;">❤️ @${escHtml(b.author_username||'')}</span>`
+        : `<span class="badge badge-gray" style="font-size:11px;">${b.is_public ? '🌐 Публичный' : '🔒 Приватный'}</span>`;
+      const emptyBadge = isEmpty
+        ? `<span class="badge badge-gray" style="font-size:11px;">Нет вопросов</span>` : '';
+
+      return `
+        <div id="bpc-${b.id}"
+             class="bank-pick-card${isEmpty ? ' disabled' : ''}"
+             onclick="${isEmpty ? '' : `pickBank(${b.id})`}">
+          <div class="bank-pick-icon">📚</div>
+          <div class="bank-pick-info">
+            <div class="bank-pick-name">${escHtml(b.name)}</div>
+            <div class="bank-pick-meta">
+              ${authorBadge}
+              <span class="text-gray text-sm">📋 ${b.question_count ?? 0} вопросов</span>
+              ${emptyBadge}
+            </div>
+          </div>
+          <div class="bank-pick-check">✅</div>
+        </div>`;
+    }
+
+    /* ── Pick bank ───────────────────────────────────── */
+    async function pickBank(id) {
+      if (selectedBankId === id) return;
+
+      // Deselect previous card
+      if (selectedBankId) {
+        document.getElementById(`bpc-${selectedBankId}`)?.classList.remove('selected');
+      }
+      document.getElementById(`bpc-${id}`).classList.add('selected');
+      selectedBankId = id;
+
+      // Unlock settings panel
+      const sc = document.getElementById('settings-card');
+      sc.classList.replace('settings-locked', 'settings-unlocked');
+      document.getElementById('settings-hint').textContent = 'Параметры создаваемого теста';
+
+      // Show loading state
+      document.getElementById('config-card').classList.remove('d-none');
+      document.getElementById('gen-actions').classList.remove('d-none');
+      document.getElementById('q-count-display').textContent = '…';
+      document.getElementById('q-count-max').textContent = '';
+
+      try {
+        selectedBankData = await API.get(`/api/banks/${id}`);
+        const total = selectedBankData.questions?.length ?? 0;
+        const def   = Math.max(1, Math.min(10, total));
+
+        const slider = document.getElementById('q-count-slider');
+        slider.max   = total;
+        slider.value = def;
+        onSliderInput(def, total);
+
+        // Auto-fill title once
+        const titleInput = document.getElementById('gen-title');
+        if (!_titleAutoFilled || titleInput.value === '') {
+          titleInput.value = selectedBankData.name;
+          _titleAutoFilled = true;
+        }
+
+        document.getElementById('config-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (err) {
+        showToast('Ошибка загрузки банка: ' + err.message, 'error');
+      }
+    }
+
+    /* ── Slider ──────────────────────────────────────── */
+    function onSliderInput(val, forceMax) {
+      const total = forceMax ?? (selectedBankData?.questions?.length ?? 0);
+      const n     = Math.max(1, Math.min(Number(val), total));
+      document.getElementById('q-count-display').textContent  = n;
+      document.getElementById('q-count-max').textContent      = ` из ${total}`;
+      document.getElementById('q-slider-max-label').textContent = total;
+      const pct = total ? Math.round(n / total * 100) : 0;
+      document.getElementById('q-count-pct').textContent = `${pct}% банка`;
+    }
+
+    /* ── Generate ────────────────────────────────────── */
+    async function generateTest() {
+      const alertEl = document.getElementById('gen-alert');
+      hideAlert(alertEl);
+
+      const title = document.getElementById('gen-title').value.trim();
+      if (!title)             { showAlert(alertEl, 'Введите название теста'); return; }
+      if (!selectedBankData)  { showAlert(alertEl, 'Выберите банк');          return; }
+
+      const allQs = selectedBankData.questions || [];
+      if (!allQs.length) { showAlert(alertEl, 'В выбранном банке нет вопросов'); return; }
+
+      const count = Math.max(1, Math.min(
+        parseInt(document.getElementById('q-count-slider').value) || 1,
+        allQs.length
+      ));
+
+      // Fisher-Yates shuffle
+      const shuffled = [...allQs];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      const picked = shuffled.slice(0, count);
+
+      const questions = picked.map((q, i) => ({
+        question_text:    q.question_text,
+        type:             (q.answers?.length) ? 'single_choice' : 'text_answer',
+        image_url:        null,
+        answer_tolerance: null,
+        question_order:   i,
+        answers: (q.answers || []).map(a => ({
+          answer_text: a.answer_text,
+          is_correct:  a.is_correct ? 1 : 0
+        }))
+      }));
+
+      const password  = document.getElementById('toggle-password').checked
+        ? (document.getElementById('gen-password').value || null) : null;
+      const deadline  = document.getElementById('toggle-deadline').checked
+        ? (document.getElementById('gen-deadline').value || null) : null;
+      const timelimit = document.getElementById('toggle-timelimit').checked
+        ? (parseInt(document.getElementById('gen-timelimit').value) || null) : null;
+
+      const body = {
+        title,
+        description:        `Сгенерировано из банка «${selectedBankData.name}» · ${count} случайных вопросов`,
+        password:           password,
+        is_anonymous:       document.getElementById('toggle-anon').checked ? 1 : 0,
+        show_results:       document.getElementById('toggle-results').checked ? 1 : 0,
+        shuffle_questions:  document.getElementById('toggle-shuffle').checked ? 1 : 0,
+        deadline_at:        deadline,
+        time_limit_minutes: timelimit,
+        questions
+      };
+
+      const btn = document.getElementById('gen-btn');
+      btn.disabled    = true;
+      btn.textContent = '⏳ Создаём тест…';
+
+      try {
+        const res = await API.post('/api/tests', body);
+        showToast('Тест создан!', 'success');
+        setTimeout(() => { window.location.href = `/test-results.html?id=${res.id}`; }, 600);
+      } catch (err) {
+        showAlert(alertEl, err.message);
+        btn.disabled    = false;
+        btn.textContent = '🎲 Сгенерировать тест';
+      }
+    }
+
+    /* ── Toggle helpers ──────────────────────────────── */
+    function togglePasswordField() {
+      document.getElementById('password-field').classList.toggle('d-none',
+        !document.getElementById('toggle-password').checked);
+    }
+    function toggleTimelimitField() {
+      document.getElementById('timelimit-field').classList.toggle('d-none',
+        !document.getElementById('toggle-timelimit').checked);
+    }
+    function toggleDeadlineField() {
+      document.getElementById('deadline-field').classList.toggle('d-none',
+        !document.getElementById('toggle-deadline').checked);
+    }
+
+    // Reset auto-fill flag on manual title edit
+    document.getElementById('gen-title').addEventListener('input', () => {
+      _titleAutoFilled = false;
+    });
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,573 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Банки вопросов — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ── Tab bar ─────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--border, #e5e7eb);
+      padding-bottom: 0;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      font-family: inherit;
+      padding: 10px 20px;
+      color: var(--text-muted, #6b7280);
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color .15s, border-color .15s;
+      border-radius: 0;
+    }
+    .tab-btn:hover { color: var(--primary, #4f46e5); }
+    .tab-btn.active {
+      color: var(--primary, #4f46e5);
+      border-bottom-color: var(--primary, #4f46e5);
+      font-weight: 600;
+    }
+
+    /* ── Bank card grid ──────────────────────────────── */
+    .banks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .bank-card {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: box-shadow .15s;
+    }
+    .bank-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+
+    .bank-card-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      font-family: var(--font-heading, inherit);
+      color: var(--text, #111);
+      margin: 0;
+    }
+
+    .bank-card-desc {
+      font-size: .875rem;
+      color: var(--text-muted, #6b7280);
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      margin: 0;
+    }
+
+    .bank-card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      font-size: .85rem;
+      color: var(--text-muted, #6b7280);
+    }
+
+    .bank-card-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 4px;
+    }
+
+    /* ── Public feed author block ────────────────────── */
+    .bank-author {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 2px;
+    }
+    .bank-author-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--primary, #4f46e5);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: .85rem;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .bank-author-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    .bank-author-info { display: flex; flex-direction: column; gap: 1px; }
+    .bank-author-username { font-weight: 600; font-size: .875rem; color: var(--text, #111); }
+    .bank-author-extra { font-size: .8rem; color: var(--text-muted, #6b7280); }
+
+    /* ── Public search bar ───────────────────────────── */
+    .public-search-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .public-search-row .form-input { flex: 1; }
+
+    /* ── Load-more ───────────────────────────────────── */
+    .load-more-wrap {
+      text-align: center;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+
+      <!-- Page header -->
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+        <a href="/dashboard.html" class="btn btn-secondary btn-sm">← Назад</a>
+        <h1 style="font-family:var(--font-heading); font-size:1.8rem;">Банки вопросов</h1>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-mine-btn"   onclick="switchTab('mine')">📚 Мои банки</button>
+        <button class="tab-btn"        id="tab-public-btn" onclick="switchTab('public')">🌐 Публичные банки</button>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 1 — Мои банки
+      ═══════════════════════════════════════════════ -->
+      <div id="tab-mine">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
+          <h2 style="font-family:var(--font-heading); font-size:1.3rem; margin:0;">Мои банки вопросов</h2>
+          <button class="btn btn-primary" onclick="openCreateModal()">➕ Создать банк</button>
+        </div>
+
+        <div id="my-banks-wrap">
+          <div class="empty-state"><div class="loading">Загрузка…</div></div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 2 — Публичные банки
+      ═══════════════════════════════════════════════ -->
+      <div id="tab-public" class="d-none">
+        <div class="public-search-row">
+          <input id="public-search-input" class="form-input"
+                 type="text" placeholder="Поиск по названию, преподавателю…"
+                 onkeydown="if(event.key==='Enter') searchPublic()">
+          <button class="btn btn-primary" onclick="searchPublic()">🔍 Найти</button>
+        </div>
+
+        <div id="public-banks-wrap">
+          <div class="empty-state"><div class="loading">Загрузка…</div></div>
+        </div>
+
+        <div class="load-more-wrap d-none" id="load-more-wrap">
+          <button class="btn btn-secondary" onclick="loadMorePublic()">Загрузить ещё</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── Create bank modal ───────────────────────────── -->
+  <div class="modal-overlay" id="create-modal">
+    <div class="modal">
+      <h3>Новый банк вопросов</h3>
+
+      <div id="create-modal-alert" class="alert"></div>
+
+      <div class="form-group mt-16">
+        <label class="form-label" for="new-bank-name">Название банка *</label>
+        <input id="new-bank-name" class="form-input" type="text"
+               placeholder="Например: Линейная алгебра — тест 1" maxlength="120"
+               onkeydown="if(event.key==='Enter') submitCreate()">
+      </div>
+
+      <div class="form-group mt-8">
+        <label class="form-label" for="new-bank-desc">Описание</label>
+        <textarea id="new-bank-desc" class="form-input" rows="3"
+                  placeholder="Краткое описание банка (необязательно)" maxlength="500"
+                  style="resize:vertical;"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeCreateModal()">Отмена</button>
+        <button class="btn btn-primary" id="create-submit-btn" onclick="submitCreate()">Создать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Delete confirm modal ────────────────────────── -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal">
+      <h3>Удалить банк?</h3>
+      <p class="text-gray">Это действие нельзя отменить. Все вопросы в банке будут удалены.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">Отмена</button>
+        <button class="btn btn-danger"    id="confirm-delete-btn" onclick="confirmDelete()">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    if (!Auth.requireAuth('teacher')) throw new Error('not auth');
+    renderNavbar();
+
+    /* ── Escape helper ─────────────────────────────── */
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    /* ══════════════════════════════════════════════════
+       TAB SWITCHING
+    ══════════════════════════════════════════════════ */
+    let publicLoaded = false;
+
+    function switchTab(tab) {
+      const isMine = tab === 'mine';
+      document.getElementById('tab-mine').classList.toggle('d-none', !isMine);
+      document.getElementById('tab-public').classList.toggle('d-none', isMine);
+      document.getElementById('tab-mine-btn').classList.toggle('active', isMine);
+      document.getElementById('tab-public-btn').classList.toggle('active', !isMine);
+
+      if (!isMine && !publicLoaded) {
+        publicLoaded = true;
+        searchPublic();
+      }
+    }
+
+    /* ══════════════════════════════════════════════════
+       TAB 1 — MY BANKS
+    ══════════════════════════════════════════════════ */
+    let myBanks = [];
+
+    async function loadMyBanks() {
+      const wrap = document.getElementById('my-banks-wrap');
+      wrap.innerHTML = '<div class="empty-state"><div class="loading">Загрузка…</div></div>';
+      try {
+        myBanks = await API.get('/api/banks');
+        renderMyBanks();
+      } catch (err) {
+        wrap.innerHTML = `<div class="empty-state"><p class="text-gray">Не удалось загрузить: ${escHtml(err.message)}</p></div>`;
+      }
+    }
+
+    function renderMyBanks() {
+      const wrap = document.getElementById('my-banks-wrap');
+      if (!myBanks.length) {
+        wrap.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📚</div>
+            <h3>У вас нет банков вопросов</h3>
+            <p>Создайте первый!</p>
+            <button class="btn btn-primary mt-16" onclick="openCreateModal()">Создать банк</button>
+          </div>`;
+        return;
+      }
+
+      wrap.innerHTML = `<div class="banks-grid">${myBanks.map(b => bankCardHtml(b)).join('')}</div>`;
+    }
+
+    function bankCardHtml(b) {
+      if (b.is_favorite) {
+        // Favorited foreign bank
+        const authorName   = escHtml(b.author_first || b.author_username || '—');
+        const authorSub    = escHtml(b.author_username ? '@' + b.author_username : '');
+        const authorAvatar = b.author_avatar
+          ? `<img src="${escHtml(b.author_avatar)}" alt="">`
+          : escHtml((b.author_username||'?').slice(0,2).toUpperCase());
+        return `
+          <div class="bank-card" id="bank-${b.id}">
+            <div class="bank-card-name">${escHtml(b.name)}</div>
+            ${b.description ? `<div class="bank-card-desc">${escHtml(b.description)}</div>` : ''}
+            <div class="bank-author" style="margin-top:4px;">
+              <div class="bank-author-avatar">${authorAvatar}</div>
+              <div class="bank-author-info">
+                <span class="bank-author-name">${authorName}</span>
+                <span class="bank-author-sub">${authorSub}</span>
+              </div>
+            </div>
+            <div class="bank-card-meta">
+              <span>📋 ${b.question_count ?? 0} вопросов</span>
+              <span class="badge badge-blue">❤️ Избранное</span>
+              <span class="badge badge-green">🌐 Публичный</span>
+            </div>
+            <div class="bank-card-actions">
+              <a href="/bank.html?id=${b.id}" class="btn btn-primary btn-sm">Открыть →</a>
+              <button class="btn btn-danger btn-sm" title="Убрать из избранного"
+                      onclick="removeFavorite(${b.id})">💔 Убрать</button>
+            </div>
+          </div>`;
+      }
+
+      const pubBadge    = b.is_public
+        ? '<span class="badge badge-green">🌐 Публичный</span>'
+        : '<span class="badge badge-gray">🔒 Приватный</span>';
+      const toggleTitle = b.is_public ? 'Сделать приватным' : 'Сделать публичным';
+      const toggleIcon  = b.is_public ? '🔒' : '🌐';
+
+      return `
+        <div class="bank-card" id="bank-${b.id}">
+          <div class="bank-card-name">${escHtml(b.name)}</div>
+          ${b.description ? `<div class="bank-card-desc">${escHtml(b.description)}</div>` : ''}
+          <div class="bank-card-meta">
+            <span>📋 ${b.question_count ?? 0} вопросов</span>
+            <span>📅 ${fmtDate(b.created_at)}</span>
+            ${pubBadge}
+          </div>
+          <div class="bank-card-actions">
+            <a href="/bank.html?id=${b.id}" class="btn btn-primary btn-sm">Открыть →</a>
+            <button class="btn btn-secondary btn-sm" title="${toggleTitle}"
+                    onclick="togglePublic(${b.id}, ${b.is_public ? 0 : 1})">${toggleIcon}</button>
+            <button class="btn btn-danger btn-sm" title="Удалить банк"
+                    onclick="openDeleteModal(${b.id})">🗑️</button>
+          </div>
+        </div>`;
+    }
+
+    /* ── Toggle public ──────────────────────────────── */
+    async function togglePublic(id, newVal) {
+      try {
+        await API.put(`/api/banks/${id}`, { is_public: newVal });
+        const idx = myBanks.findIndex(b => b.id === id);
+        if (idx !== -1) myBanks[idx].is_public = newVal;
+        renderMyBanks();
+        showToast(newVal ? 'Банк теперь публичный' : 'Банк теперь приватный', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function removeFavorite(id) {
+      try {
+        await API.delete(`/api/banks/${id}/favorite`);
+        myBanks = myBanks.filter(b => b.id !== id);
+        renderMyBanks();
+        showToast('Убрано из избранного', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    /* ── Create modal ───────────────────────────────── */
+    function openCreateModal() {
+      document.getElementById('new-bank-name').value = '';
+      document.getElementById('new-bank-desc').value = '';
+      hideAlert(document.getElementById('create-modal-alert'));
+      document.getElementById('create-modal').classList.add('open');
+      setTimeout(() => document.getElementById('new-bank-name').focus(), 50);
+    }
+
+    function closeCreateModal() {
+      document.getElementById('create-modal').classList.remove('open');
+    }
+
+    async function submitCreate() {
+      const alertEl = document.getElementById('create-modal-alert');
+      hideAlert(alertEl);
+
+      const name = document.getElementById('new-bank-name').value.trim();
+      if (!name) { showAlert(alertEl, 'Введите название банка'); return; }
+
+      const description = document.getElementById('new-bank-desc').value.trim();
+      const btn = document.getElementById('create-submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Создаём…';
+
+      try {
+        const bank = await API.post('/api/banks', { name, description: description || null });
+        myBanks.unshift(bank);
+        renderMyBanks();
+        closeCreateModal();
+        showToast('Банк создан', 'success');
+      } catch (err) {
+        showAlert(alertEl, err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Создать';
+      }
+    }
+
+    /* ── Delete modal ───────────────────────────────── */
+    let deleteTargetId = null;
+
+    function openDeleteModal(id) {
+      deleteTargetId = id;
+      document.getElementById('delete-modal').classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      deleteTargetId = null;
+      document.getElementById('delete-modal').classList.remove('open');
+    }
+
+    async function confirmDelete() {
+      if (!deleteTargetId) return;
+      const btn = document.getElementById('confirm-delete-btn');
+      btn.disabled = true;
+      try {
+        await API.delete(`/api/banks/${deleteTargetId}`);
+        myBanks = myBanks.filter(b => b.id !== deleteTargetId);
+        renderMyBanks();
+        closeDeleteModal();
+        showToast('Банк удалён', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+      }
+    }
+
+    /* ── Close modals on overlay click ─────────────── */
+    document.getElementById('create-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeCreateModal();
+    });
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeDeleteModal();
+    });
+
+    /* ══════════════════════════════════════════════════
+       TAB 2 — PUBLIC BANKS
+    ══════════════════════════════════════════════════ */
+    const PUBLIC_LIMIT = 20;
+    let publicOffset = 0;
+    let publicTotal  = 0;
+    let publicQuery  = '';
+
+    async function searchPublic() {
+      publicQuery  = document.getElementById('public-search-input').value.trim();
+      publicOffset = 0;
+      publicTotal  = 0;
+
+      const wrap = document.getElementById('public-banks-wrap');
+      wrap.innerHTML = '<div class="empty-state"><div class="loading">Загрузка…</div></div>';
+      document.getElementById('load-more-wrap').classList.add('d-none');
+
+      await fetchPublic(true);
+    }
+
+    async function loadMorePublic() {
+      await fetchPublic(false);
+    }
+
+    async function fetchPublic(replace) {
+      try {
+        const qs  = new URLSearchParams({ q: publicQuery, limit: PUBLIC_LIMIT, offset: publicOffset });
+        const res = await API.get(`/api/banks/public?${qs}`);
+        const banks = res.banks || res;          // support {banks, total} or plain array
+        publicTotal = res.total ?? banks.length;
+        publicOffset += banks.length;
+
+        const wrap = document.getElementById('public-banks-wrap');
+
+        if (replace) {
+          if (!banks.length) {
+            wrap.innerHTML = `
+              <div class="empty-state">
+                <div class="empty-icon">🌐</div>
+                <h3>Ничего не найдено</h3>
+                <p class="text-gray">Попробуйте другой запрос</p>
+              </div>`;
+            document.getElementById('load-more-wrap').classList.add('d-none');
+            return;
+          }
+          wrap.innerHTML = `<div class="banks-grid" id="public-banks-grid">${banks.map(publicBankCardHtml).join('')}</div>`;
+        } else {
+          const grid = document.getElementById('public-banks-grid');
+          if (grid) grid.insertAdjacentHTML('beforeend', banks.map(publicBankCardHtml).join(''));
+        }
+
+        // Show / hide "load more"
+        const lm = document.getElementById('load-more-wrap');
+        if (publicOffset < publicTotal) {
+          lm.classList.remove('d-none');
+        } else {
+          lm.classList.add('d-none');
+        }
+      } catch (err) {
+        const wrap = document.getElementById('public-banks-wrap');
+        wrap.innerHTML = `<div class="empty-state"><p class="text-gray">Ошибка загрузки: ${escHtml(err.message)}</p></div>`;
+      }
+    }
+
+    function publicBankCardHtml(b) {
+      const authorInitials = (b.username || '?').slice(0, 2).toUpperCase();
+      const avatarInner    = b.avatar_url
+        ? `<img src="${escHtml(b.avatar_url)}" alt="">`
+        : authorInitials;
+      const authorExtra = [b.full_name, b.institution].filter(Boolean).map(escHtml).join(' · ');
+      const isFav = b.is_favorited;
+      const favBtn = isFav
+        ? `<button class="btn btn-danger btn-sm" onclick="toggleFavorite(${b.id}, false, this)">💔 Убрать</button>`
+        : `<button class="btn btn-secondary btn-sm" onclick="toggleFavorite(${b.id}, true, this)">❤️ В избранное</button>`;
+
+      return `
+        <div class="bank-card" data-bank-id="${b.id}">
+          <div class="bank-card-name">${escHtml(b.name)}</div>
+          ${b.description ? `<div class="bank-card-desc">${escHtml(b.description)}</div>` : ''}
+          <div class="bank-author">
+            <div class="bank-author-avatar">${avatarInner}</div>
+            <div class="bank-author-info">
+              <span class="bank-author-username">@${escHtml(b.username || '—')}</span>
+              ${authorExtra ? `<span class="bank-author-extra">${authorExtra}</span>` : ''}
+            </div>
+          </div>
+          <div class="bank-card-meta">
+            <span>📋 ${b.question_count ?? 0} вопросов</span>
+            <span>📅 ${fmtDate(b.created_at)}</span>
+            <span class="badge badge-green">🌐 Публичный</span>
+          </div>
+          <div class="bank-card-actions">
+            <a href="/bank.html?id=${b.id}" class="btn btn-primary btn-sm">Открыть →</a>
+            ${favBtn}
+          </div>
+        </div>`;
+    }
+
+    async function toggleFavorite(id, add, btn) {
+      btn.disabled = true;
+      try {
+        if (add) {
+          await API.post(`/api/banks/${id}/favorite`);
+          btn.outerHTML = `<button class="btn btn-danger btn-sm" onclick="toggleFavorite(${id}, false, this)">💔 Убрать</button>`;
+          showToast('Добавлено в избранное', 'success');
+        } else {
+          await API.delete(`/api/banks/${id}/favorite`);
+          btn.outerHTML = `<button class="btn btn-secondary btn-sm" onclick="toggleFavorite(${id}, true, this)">❤️ В избранное</button>`;
+          showToast('Убрано из избранного', 'success');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+      }
+    }
+
+    /* ══════════════════════════════════════════════════
+       INIT
+    ══════════════════════════════════════════════════ */
+    loadMyBanks();
+  </script>
+</body>
+</html>

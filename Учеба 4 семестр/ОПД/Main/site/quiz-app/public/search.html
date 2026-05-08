@@ -1,0 +1,348 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Поиск пользователей — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ── Search bar ── */
+    .search-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .search-bar .form-input {
+      flex: 1;
+      min-width: 0;
+    }
+    @media (max-width: 480px) {
+      .search-bar { flex-wrap: wrap; }
+      .search-bar .btn { width: 100%; }
+    }
+
+    /* ── Results grid ── */
+    .user-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .user-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 540px) {
+      .user-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── User card ── */
+    .user-card {
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius-lg);
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 10px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .user-card:hover {
+      border-color: var(--blue);
+      box-shadow: 0 2px 12px rgba(28,176,246,0.10);
+    }
+
+    /* ── User avatar in card (56px) ── */
+    .user-card-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--green);
+      color: var(--white);
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 2px solid var(--green-light);
+      box-shadow: 0 2px 8px rgba(88,204,2,0.20);
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .user-card-avatar.avatar-blue {
+      background: var(--blue);
+      border-color: #b3e5fc;
+      box-shadow: 0 2px 8px rgba(28,176,246,0.20);
+    }
+    .user-card-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* ── User card info ── */
+    .user-card-name {
+      font-family: var(--font-heading);
+      font-size: 1rem;
+      color: var(--almost-black);
+      line-height: 1.2;
+    }
+    .user-card-username {
+      font-size: 13px;
+      color: var(--graphite);
+    }
+    .user-card-institution {
+      font-size: 12px;
+      color: var(--graphite);
+      font-weight: 500;
+    }
+
+    /* ── Hint text ── */
+    .search-hint {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--graphite);
+    }
+    .search-hint .empty-icon { font-size: 2.8rem; margin-bottom: 12px; }
+    .search-hint p { font-size: 15px; font-weight: 600; }
+    .search-hint span { font-size: 13px; color: var(--gray); }
+
+    /* ── Loading spinner ── */
+    .search-loading {
+      text-align: center;
+      padding: 48px 20px;
+    }
+    .search-loading .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .search-loading p { font-size: 15px; color: var(--graphite); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+
+      <!-- Page heading -->
+      <div class="dashboard-header">
+        <div>
+          <h1 style="font-family:var(--font-heading); font-size:1.8rem;">🔍 Поиск пользователей</h1>
+          <p class="text-gray mt-8">Найдите преподавателей и студентов на платформе</p>
+        </div>
+      </div>
+
+      <!-- Search card -->
+      <div class="card mb-24">
+        <div class="search-bar">
+          <input
+            id="search-input"
+            class="form-input"
+            type="text"
+            placeholder="Поиск по имени или логину…"
+            maxlength="100"
+            autocomplete="off"
+            oninput="onSearchInput()"
+            onkeydown="if(event.key==='Enter') doSearch()"
+          >
+          <button class="btn btn-primary" onclick="doSearch()" id="search-btn">
+            🔍 Найти
+          </button>
+        </div>
+        <p id="search-tip" class="text-gray text-sm mt-8" style="display:none;">
+          Введите не менее 2 символов
+        </p>
+      </div>
+
+      <!-- Results area -->
+      <div id="results-area">
+        <!-- Initial hint state -->
+        <div id="state-hint" class="search-hint">
+          <div class="empty-icon">👥</div>
+          <p>Введите имя или логин для поиска</p>
+          <span>Минимум 2 символа</span>
+        </div>
+
+        <!-- Loading state -->
+        <div id="state-loading" class="search-loading" style="display:none;">
+          <div class="empty-icon">⏳</div>
+          <p>Поиск…</p>
+        </div>
+
+        <!-- Empty result state -->
+        <div id="state-empty" class="empty-state" style="display:none;">
+          <div class="empty-icon">🔎</div>
+          <h3>Пользователи не найдены</h3>
+          <p>Попробуйте другой запрос</p>
+        </div>
+
+        <!-- Error state -->
+        <div id="state-error" class="empty-state" style="display:none;">
+          <div class="empty-icon">😕</div>
+          <h3>Ошибка поиска</h3>
+          <p id="state-error-msg" class="text-gray">Не удалось выполнить поиск</p>
+        </div>
+
+        <!-- Grid of results -->
+        <div id="state-results" style="display:none;">
+          <div id="user-grid" class="user-grid"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    /* ── Helpers ──────────────────────────────────── */
+    function escHtml(s) {
+      return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /* ── Init ─────────────────────────────────────── */
+    renderNavbar();
+
+    let lastQuery = '';
+    let searchTimeout = null;
+
+    /* ── Input handler — show tip if < 2 chars ──── */
+    function onSearchInput() {
+      const q = document.getElementById('search-input').value.trim();
+      const tip = document.getElementById('search-tip');
+      if (q.length > 0 && q.length < 2) {
+        tip.style.display = 'block';
+      } else {
+        tip.style.display = 'none';
+      }
+    }
+
+    /* ── Trigger search ───────────────────────────── */
+    function doSearch() {
+      const q = document.getElementById('search-input').value.trim();
+      if (q.length < 2) {
+        document.getElementById('search-tip').style.display = 'block';
+        document.getElementById('search-input').focus();
+        return;
+      }
+      document.getElementById('search-tip').style.display = 'none';
+      if (q === lastQuery) return;
+      lastQuery = q;
+      runSearch(q);
+    }
+
+    /* ── Run API search ───────────────────────────── */
+    async function runSearch(q) {
+      setState('loading');
+      const btn = document.getElementById('search-btn');
+      btn.disabled = true;
+
+      try {
+        const users = await API.get('/api/users/search?q=' + encodeURIComponent(q));
+        if (!users || users.length === 0) {
+          setState('empty');
+        } else {
+          renderResults(users);
+          setState('results');
+        }
+      } catch (err) {
+        document.getElementById('state-error-msg').textContent = err.message || 'Не удалось выполнить поиск';
+        setState('error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    /* ── Switch visible state ─────────────────────── */
+    function setState(name) {
+      const states = ['hint', 'loading', 'empty', 'error', 'results'];
+      states.forEach(s => {
+        document.getElementById('state-' + s).style.display = (s === name) ? '' : 'none';
+      });
+    }
+
+    /* ── Render user cards ────────────────────────── */
+    function renderResults(users) {
+      const grid = document.getElementById('user-grid');
+      grid.innerHTML = users.map(u => userCardHtml(u)).join('');
+    }
+
+    function userCardHtml(u) {
+      const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ');
+      const isTeacher = u.role === 'teacher';
+
+      // Role badge
+      const roleBadge = isTeacher
+        ? `<span class="badge badge-green">👨‍🏫 Преподаватель</span>`
+        : `<span class="badge badge-blue">🎓 Студент</span>`;
+
+      // Institution line
+      const instHtml = u.institution
+        ? `<div class="user-card-institution text-gray">🏛 ${escHtml(u.institution)}</div>`
+        : '';
+
+      // Full name line (only if set)
+      const nameHtml = fullName
+        ? `<div class="user-card-name">${escHtml(fullName)}</div>`
+        : '';
+
+      // Avatar
+      const avatarHtml = buildAvatarHtml(u, isTeacher);
+
+      return `
+        <div class="user-card">
+          ${avatarHtml}
+          ${nameHtml}
+          <div class="user-card-username">@${escHtml(u.username)}</div>
+          ${instHtml}
+          ${roleBadge}
+          <a href="/profile.html?user=${encodeURIComponent(u.username)}" class="btn btn-secondary btn-sm" style="margin-top:4px; width:100%;">
+            Профиль →
+          </a>
+        </div>`;
+    }
+
+    function buildAvatarHtml(u, isTeacher) {
+      const colorClass = isTeacher ? '' : ' avatar-blue';
+
+      if (u.avatar_url) {
+        // Image avatar — fallback to initials on error
+        const initials = getInitials(u);
+        return `
+          <div class="user-card-avatar${colorClass}" id="av-${escHtml(u.username)}">
+            <img
+              src="${escHtml(u.avatar_url)}"
+              alt="${escHtml(u.username)}"
+              onerror="avatarImgError(this, '${escHtml(initials)}')"
+            >
+          </div>`;
+      }
+
+      // Initials avatar
+      return `<div class="user-card-avatar${colorClass}">${escHtml(getInitials(u))}</div>`;
+    }
+
+    function getInitials(u) {
+      const fn = u.first_name || '';
+      const ln = u.last_name  || '';
+      if (fn || ln) {
+        return ((fn[0] || '') + (ln[0] || '')).toUpperCase();
+      }
+      return (u.username || '?')[0].toUpperCase();
+    }
+
+    function avatarImgError(img, initials) {
+      const circle = img.parentElement;
+      if (!circle) return;
+      img.remove();
+      circle.textContent = initials;
+    }
+
+    /* ── Allow Enter key on input ─────────────────── */
+    document.getElementById('search-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') doSearch();
+    });
+  </script>
+</body>
+</html>

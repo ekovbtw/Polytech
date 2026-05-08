@@ -1,9 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Прохождение теста — PolyTest</title>
+  <title>Прохождение теста — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -56,6 +58,7 @@
             <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px; flex-wrap:wrap; gap:8px;">
               <span class="text-gray text-sm" id="progress-text">Вопрос 0 из 0</span>
               <span class="text-gray text-sm" id="answered-count">Отвечено: 0</span>
+              <span id="timer-display" class="d-none" style="font-family:var(--font-heading);font-size:1.1rem;padding:4px 14px;border-radius:20px;background:var(--green-light);color:var(--green-dark);">⏱️ --:--</span>
             </div>
           </div>
           <div class="progress-bar">
@@ -93,9 +96,10 @@
     const testId   = params.get('id');
     const testCode = params.get('code');
 
-    let testInfo   = null;
-    let questions  = [];
-    let userAnswers = {};   // { questionId: answerId }
+    let testInfo    = null;
+    let questions   = [];
+    let userAnswers = {};
+    let timerInterval = null;
 
     if (!testId) { window.location.href = '/dashboard.html'; }
 
@@ -116,11 +120,22 @@
     })();
 
     function showEntryScreen(meta) {
+      // Check deadline before showing form
+      if (meta.deadline_at && new Date() > new Date(meta.deadline_at)) {
+        document.getElementById('screen-loading').innerHTML = `
+          <div style="font-size:3rem;">🔒</div>
+          <h3 style="font-family:var(--font-heading);margin:12px 0 8px;">Срок сдачи истёк</h3>
+          <p class="text-gray">Тест был закрыт ${fmtDate(meta.deadline_at)}</p>
+          <a href="/dashboard.html" class="btn btn-primary mt-24">На главную</a>`;
+        return;
+      }
       document.getElementById('screen-loading').classList.add('d-none');
       document.getElementById('screen-entry').classList.remove('d-none');
       document.getElementById('entry-title').textContent = meta.title;
-      document.getElementById('entry-meta').textContent =
-        `${meta.question_count} вопросов`;
+      let metaTxt = `${meta.question_count} вопросов`;
+      if (meta.time_limit_minutes) metaTxt += ` · ⏱️ ${meta.time_limit_minutes} мин`;
+      if (meta.deadline_at) metaTxt += ` · до ${fmtDate(meta.deadline_at)}`;
+      document.getElementById('entry-meta').textContent = metaTxt;
 
       if (meta.has_password) {
         document.getElementById('password-entry').classList.remove('d-none');
@@ -199,28 +214,208 @@
       document.getElementById('test-title-display').textContent = testInfo.title || 'Тест';
       updateProgress();
 
+      // Start countdown timer if test has time limit
+      if (testInfo.time_limit_minutes) {
+        const key = `qm_timer_${testInfo.id}`;
+        let startedAt = sessionStorage.getItem(key);
+        if (!startedAt) {
+          startedAt = Date.now();
+          sessionStorage.setItem(key, startedAt);
+        }
+        const limitMs  = testInfo.time_limit_minutes * 60 * 1000;
+        const timerEl  = document.getElementById('timer-display');
+        timerEl.classList.remove('d-none');
+
+        timerInterval = setInterval(() => {
+          const elapsed   = Date.now() - Number(startedAt);
+          const remaining = Math.max(0, limitMs - elapsed);
+          const mins = Math.floor(remaining / 60000);
+          const secs = Math.floor((remaining % 60000) / 1000);
+          timerEl.textContent = `⏱️ ${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+          if (remaining < 60000) {
+            timerEl.style.background = '#ffebee';
+            timerEl.style.color      = '#c62828';
+          }
+          if (remaining <= 0) {
+            clearInterval(timerInterval);
+            sessionStorage.removeItem(key);
+            timerEl.textContent = '⏱️ 00:00';
+            showToast('Время вышло! Отправляем тест…', 'error');
+            setTimeout(() => submitTest(), 1500);
+          }
+        }, 1000);
+      }
+
       const list = document.getElementById('questions-list');
-      list.innerHTML = questions.map((q, i) => `
-        <div class="test-question-card" id="qcard-${q.id}">
-          <h3>${i + 1}. ${escHtml(q.question_text)}</h3>
-          ${q.answers.map(a => `
-            <label class="answer-option" id="ao-${q.id}-${a.id}" onclick="selectAnswer(${q.id}, ${a.id}, this)">
-              <input type="radio" name="q${q.id}" value="${a.id}">
-              <div class="answer-dot"></div>
-              <span>${escHtml(a.answer_text)}</span>
-            </label>
-          `).join('')}
-        </div>
-      `).join('');
+      list.innerHTML = questions.map((q, i) => buildQuestionCard(q, i)).join('');
+
+      // Attach event listeners after render
+      questions.forEach(q => attachQuestionListeners(q));
     }
 
-    function selectAnswer(qId, aId, el) {
-      // снять выделение
+    function buildQuestionCard(q, i) {
+      const type = q.type || 'single_choice';
+      const imgHtml = q.image_url
+        ? `<div style="margin:10px 0;"><img src="${escHtml(q.image_url)}" style="max-width:100%;max-height:280px;border-radius:12px;border:2px solid var(--gray-light);" alt="Изображение к вопросу"></div>`
+        : '';
+
+      let answerHtml = '';
+      if (type === 'single_choice') {
+        answerHtml = q.answers.map(a => `
+          <label class="answer-option" id="ao-${q.id}-${a.id}">
+            <input type="radio" name="q${q.id}" value="${a.id}">
+            <div class="answer-dot"></div>
+            <span>${escHtml(a.answer_text)}</span>
+          </label>`).join('');
+      } else if (type === 'multiple_choice') {
+        answerHtml = `<p class="text-gray text-sm" style="margin-bottom:8px;">Выберите все правильные варианты:</p>` +
+          q.answers.map(a => `
+          <label class="answer-option" id="ao-${q.id}-${a.id}">
+            <input type="checkbox" name="q${q.id}" value="${a.id}">
+            <div class="answer-dot" style="border-radius:4px;"></div>
+            <span>${escHtml(a.answer_text)}</span>
+          </label>`).join('');
+      } else if (type === 'text_answer') {
+        answerHtml = `
+          <p class="text-gray text-sm" style="margin-bottom:8px;">Введите ваш ответ:</p>
+          <textarea class="take-text-answer" id="text-ans-${q.id}"
+            placeholder="Напишите ответ здесь…" rows="3"
+            oninput="onTextInput(${q.id}, this.value)"></textarea>`;
+      } else if (type === 'number_answer') {
+        answerHtml = `
+          <p class="text-gray text-sm" style="margin-bottom:8px;">Введите число:</p>
+          <input type="number" step="any" class="take-number-answer" id="num-ans-${q.id}"
+            placeholder="0"
+            oninput="onTextInput(${q.id}, this.value)">`;
+      } else if (type === 'file_answer') {
+        answerHtml = `
+          <div class="file-upload-zone" id="fzone-${q.id}" onclick="triggerFileInput(${q.id})">
+            <div class="file-upload-icon">📎</div>
+            <div class="file-upload-text">Нажмите или перетащите файл/фото</div>
+            <div class="file-upload-name d-none" id="fname-${q.id}"></div>
+            <img class="file-preview-img d-none" id="fpreview-${q.id}" alt="Предпросмотр">
+          </div>
+          <input type="file" id="finput-${q.id}" style="display:none"
+            onchange="onFileSelected(${q.id}, this)">`;
+      }
+
+      return `
+        <div class="test-question-card" id="qcard-${q.id}">
+          <h3>${i + 1}. ${escHtml(q.question_text)}</h3>
+          ${imgHtml}
+          ${answerHtml}
+        </div>`;
+    }
+
+    function attachQuestionListeners(q) {
+      const type = q.type || 'single_choice';
+      if (type === 'single_choice') {
+        q.answers.forEach(a => {
+          const lbl = document.getElementById(`ao-${q.id}-${a.id}`);
+          if (lbl) lbl.addEventListener('click', () => selectChoice(q.id, a.id, lbl));
+        });
+      } else if (type === 'multiple_choice') {
+        q.answers.forEach(a => {
+          const lbl = document.getElementById(`ao-${q.id}-${a.id}`);
+          if (lbl) {
+            const cb = lbl.querySelector('input[type=checkbox]');
+            // Use 'change' — browser toggles checkbox on label click, then fires change
+            cb.addEventListener('change', () => {
+              lbl.classList.toggle('selected', cb.checked);
+              onMultipleChoiceChange(q.id, q.answers);
+            });
+          }
+        });
+      } else if (type === 'file_answer') {
+        const zone = document.getElementById(`fzone-${q.id}`);
+        if (zone) {
+          zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+          zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+          zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFileUpload(q.id, file);
+          });
+        }
+      }
+    }
+
+    function selectChoice(qId, aId, el) {
       document.querySelectorAll(`#qcard-${qId} .answer-option`)
         .forEach(opt => opt.classList.remove('selected'));
       el.classList.add('selected');
-      userAnswers[qId] = aId;
+      userAnswers[qId] = { type: 'single_choice', answer_id: aId };
       updateProgress();
+    }
+
+    function onMultipleChoiceChange(qId, answers) {
+      const selected = answers
+        .filter(a => {
+          const cb = document.querySelector(`#ao-${qId}-${a.id} input[type=checkbox]`);
+          return cb?.checked;
+        })
+        .map(a => a.id);
+      if (selected.length > 0) {
+        userAnswers[qId] = { type: 'multiple_choice', answer_ids: selected };
+      } else {
+        delete userAnswers[qId];
+      }
+      updateProgress();
+    }
+
+    function onTextInput(qId, val) {
+      const q = questions.find(q => q.id === qId);
+      const type = q?.type || 'single_choice';
+      if (val.trim()) {
+        userAnswers[qId] = { type, text: val };
+      } else {
+        delete userAnswers[qId];
+      }
+      updateProgress();
+    }
+
+    function triggerFileInput(qId) {
+      document.getElementById(`finput-${qId}`)?.click();
+    }
+
+    function onFileSelected(qId, input) {
+      const file = input.files[0];
+      if (file) handleFileUpload(qId, file);
+    }
+
+    async function handleFileUpload(qId, file) {
+      const zone  = document.getElementById(`fzone-${qId}`);
+      const fname = document.getElementById(`fname-${qId}`);
+      const prev  = document.getElementById(`fpreview-${qId}`);
+
+      zone.classList.add('drag-over');
+      fname.textContent = '⏳ Загружаем…';
+      fname.classList.remove('d-none');
+      prev.classList.add('d-none');
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const resp = await fetch('/api/upload/answer-file', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Ошибка загрузки');
+
+        userAnswers[qId] = { type: 'file_answer', file_url: data.url };
+        zone.classList.remove('drag-over');
+        zone.classList.add('has-file');
+        fname.textContent = '✅ ' + (file.name.length > 40 ? file.name.slice(0,40) + '…' : file.name);
+
+        if (data.is_image) {
+          prev.src = data.url;
+          prev.classList.remove('d-none');
+        }
+        updateProgress();
+      } catch (err) {
+        zone.classList.remove('drag-over');
+        fname.textContent = '❌ ' + err.message;
+        showToast(err.message, 'error');
+      }
     }
 
     function updateProgress() {
@@ -252,6 +447,7 @@
           user_id:      testInfo._userId
         });
 
+        if (timerInterval) clearInterval(timerInterval);
         if (result.show_results) {
           window.location.href = `/results.html?id=${result.submission_id}`;
         } else {

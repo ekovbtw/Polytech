@@ -1,10 +1,48 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Панель управления — PolyTest</title>
+  <title>Панель управления — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .dash-dropdown-wrap { position: relative; }
+    .dash-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 210px;
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+      z-index: 200;
+      overflow: hidden;
+    }
+    .dash-dropdown.open { display: block; }
+    .dash-dd-label {
+      padding: 7px 14px 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--graphite);
+    }
+    .dash-dd-item {
+      display: block;
+      padding: 9px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--charcoal);
+      text-decoration: none;
+      transition: background var(--transition);
+    }
+    .dash-dd-item:hover { background: var(--bg); color: var(--almost-black); }
+    .dash-dd-divider { height: 1px; background: var(--gray-light); margin: 4px 0; }
+  </style>
 </head>
 <body>
   <header class="navbar"><div id="navbar"></div></header>
@@ -47,14 +85,26 @@
             <div class="dashboard-greeting">Привет, <span id="teacher-name">...</span>! 👋</div>
             <p class="text-gray mt-8">Управляйте своими тестами</p>
           </div>
-          <div style="display:flex; gap:12px; align-items:center;">
-            <div class="hint-wrapper" id="create-hint-wrapper">
-              <a href="/create-test.html" class="btn btn-primary" id="create-btn">
-                ➕ Создать тест
-              </a>
-              <span class="hint-badge d-none" id="hint-badge" title="">!</span>
-              <div class="hint-tooltip" id="hint-tooltip">Начните отсюда! Создайте первый тест</div>
+          <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+
+            <a href="/question-banks.html" class="btn btn-secondary">📚 Банк вопросов</a>
+
+            <!-- Создать тест dropdown -->
+            <div class="dash-dropdown-wrap" id="create-dd-wrap">
+              <div class="hint-wrapper" id="create-hint-wrapper" style="display:flex;gap:0;">
+                <a href="/create-test.html" class="btn btn-primary" id="create-btn" style="border-radius:var(--radius) 0 0 var(--radius); border-right:1px solid rgba(255,255,255,0.3);">
+                  ➕ Создать тест
+                </a>
+                <button class="btn btn-primary" onclick="toggleDd('create-dd')" style="border-radius:0 var(--radius) var(--radius) 0; padding:0 10px;" title="Ещё варианты">▾</button>
+                <span class="hint-badge d-none" id="hint-badge" title="">!</span>
+                <div class="hint-tooltip" id="hint-tooltip">Начните отсюда! Создайте первый тест</div>
+              </div>
+              <div class="dash-dropdown" id="create-dd" style="right:0;left:auto;">
+                <a href="/create-test.html" class="dash-dd-item">✏️ Создать вручную</a>
+                <a href="/generate-test.html" class="dash-dd-item">🎲 Сгенерировать из банка</a>
+              </div>
             </div>
+
           </div>
         </div>
 
@@ -136,6 +186,37 @@
 
     </div>
   </main>
+
+  <!-- Модал экспорта вопросов в банк -->
+  <div class="modal-overlay" id="export-modal">
+    <div class="modal" style="max-width:560px; width:100%;">
+      <h3>📚 Добавить вопросы в банк</h3>
+      <p class="text-gray text-sm mt-8" id="export-test-title"></p>
+
+      <div class="form-group mt-16" id="export-bank-select-wrap">
+        <label class="form-label">Выберите банк</label>
+        <select class="form-input" id="export-bank-select">
+          <option value="">— Загрузка… —</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="showNewBankInput()">
+          + Создать новый банк
+        </button>
+      </div>
+      <div class="form-group d-none" id="new-bank-name-wrap">
+        <label class="form-label">Название нового банка</label>
+        <input class="form-input" id="new-bank-name" type="text" placeholder="Например: Физика — механика">
+        <button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="hideNewBankInput()">← К выбору банка</button>
+      </div>
+
+      <div id="export-questions-wrap" class="mt-16" style="max-height:300px;overflow-y:auto;"></div>
+
+      <div id="export-alert" class="alert mt-8"></div>
+      <div class="modal-actions mt-16">
+        <button class="btn btn-secondary" onclick="closeExportModal()">Отмена</button>
+        <button class="btn btn-primary" id="export-confirm-btn" onclick="confirmExport()">Добавить выбранные</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Модал подтверждения удаления -->
   <div class="modal-overlay" id="delete-modal">
@@ -231,6 +312,7 @@
             <div class="test-card-actions">
               <a href="/test-results.html?id=${t.id}" class="btn btn-secondary btn-sm" title="Результаты">📊 Итоги</a>
               <a href="/create-test.html?id=${t.id}" class="btn btn-secondary btn-sm" title="Редактировать">✏️</a>
+              <button class="btn btn-secondary btn-sm" onclick="openExportModal(${t.id},'${escHtml(t.title)}')" title="Добавить вопросы в банк">📚</button>
               <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${t.id})" title="Удалить">🗑️</button>
             </div>
           </div>
@@ -345,6 +427,128 @@
     function escHtml(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
+
+    // ── Экспорт вопросов в банк ──
+    let exportTestId = null;
+
+    async function openExportModal(testId, testTitle) {
+      exportTestId = testId;
+      document.getElementById('export-test-title').textContent = `Тест: ${testTitle}`;
+      document.getElementById('export-alert').className = 'alert';
+      document.getElementById('new-bank-name-wrap').classList.add('d-none');
+      document.getElementById('export-bank-select-wrap').classList.remove('d-none');
+
+      // Load banks list
+      const sel = document.getElementById('export-bank-select');
+      sel.innerHTML = '<option value="">— Загрузка… —</option>';
+      try {
+        const banks = await API.get('/api/banks');
+        if (!banks.length) {
+          sel.innerHTML = '<option value="">Нет банков — создайте новый</option>';
+        } else {
+          sel.innerHTML = '<option value="">— Выберите банк —</option>' +
+            banks.map(b => `<option value="${b.id}">${escHtml(b.name)} (${b.question_count} вопр.)</option>`).join('');
+        }
+      } catch {
+        sel.innerHTML = '<option value="">Ошибка загрузки</option>';
+      }
+
+      // Load questions
+      const wrap = document.getElementById('export-questions-wrap');
+      wrap.innerHTML = '<div class="text-gray text-sm">Загрузка вопросов…</div>';
+      try {
+        const data = await API.get(`/api/tests/${testId}/questions-preview`);
+        if (!data.questions.length) {
+          wrap.innerHTML = '<div class="text-gray text-sm">В тесте нет вопросов</div>';
+        } else {
+          wrap.innerHTML = `
+            <label style="display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:10px;cursor:pointer;">
+              <input type="checkbox" id="export-select-all" checked onchange="toggleAllExport(this.checked)">
+              Выбрать все (${data.questions.length})
+            </label>
+            ${data.questions.map((q,i) => `
+              <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;padding:6px 0;cursor:pointer;border-bottom:1px solid var(--gray-light);">
+                <input type="checkbox" class="export-q-cb" value="${q.id}" checked style="margin-top:2px;flex-shrink:0;">
+                <span>${i+1}. ${escHtml(q.question_text)}</span>
+              </label>
+            `).join('')}`;
+        }
+      } catch (err) {
+        wrap.innerHTML = `<div class="text-gray text-sm">Не удалось загрузить вопросы</div>`;
+      }
+
+      document.getElementById('export-modal').classList.add('open');
+    }
+
+    function toggleAllExport(checked) {
+      document.querySelectorAll('.export-q-cb').forEach(cb => cb.checked = checked);
+    }
+
+    function closeExportModal() {
+      exportTestId = null;
+      document.getElementById('export-modal').classList.remove('open');
+    }
+
+    function showNewBankInput() {
+      document.getElementById('export-bank-select-wrap').classList.add('d-none');
+      document.getElementById('new-bank-name-wrap').classList.remove('d-none');
+    }
+    function hideNewBankInput() {
+      document.getElementById('new-bank-name-wrap').classList.add('d-none');
+      document.getElementById('export-bank-select-wrap').classList.remove('d-none');
+    }
+
+    async function confirmExport() {
+      const alertEl = document.getElementById('export-alert');
+      alertEl.className = 'alert';
+      const useNew = !document.getElementById('export-bank-select-wrap').classList.contains('d-none')
+        ? false : true;
+      const isNewBank = !document.getElementById('new-bank-name-wrap').classList.contains('d-none');
+
+      let bankId;
+      if (isNewBank) {
+        const name = document.getElementById('new-bank-name').value.trim();
+        if (!name) { showAlert(alertEl, 'Введите название нового банка'); return; }
+        try {
+          const b = await API.post('/api/banks', { name });
+          bankId = b.id;
+        } catch (err) { showAlert(alertEl, err.message); return; }
+      } else {
+        bankId = document.getElementById('export-bank-select').value;
+        if (!bankId) { showAlert(alertEl, 'Выберите банк или создайте новый'); return; }
+      }
+
+      const questionIds = [...document.querySelectorAll('.export-q-cb:checked')].map(cb => +cb.value);
+      if (!questionIds.length) { showAlert(alertEl, 'Выберите хотя бы один вопрос'); return; }
+
+      const btn = document.getElementById('export-confirm-btn');
+      btn.disabled = true; btn.textContent = 'Добавляем…';
+      try {
+        const res = await API.post(`/api/tests/${exportTestId}/export-to-bank`, { bank_id: +bankId, question_ids: questionIds });
+        closeExportModal();
+        showToast(`✅ Добавлено ${res.added} вопр. в банк`, 'success');
+      } catch (err) {
+        showAlert(alertEl, err.message);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Добавить выбранные';
+      }
+    }
+
+    document.getElementById('export-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeExportModal();
+    });
+
+    // ── Dropdown toggle ──
+    function toggleDd(id) {
+      const dd = document.getElementById(id);
+      if (!dd) return;
+      dd.classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.dash-dropdown-wrap')) {
+        document.querySelectorAll('.dash-dropdown.open').forEach(d => d.classList.remove('open'));
+      }
+    });
   </script>
 </body>
 </html>

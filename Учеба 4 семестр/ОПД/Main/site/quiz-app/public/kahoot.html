@@ -1,0 +1,258 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kahoot-режим — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Navbar ── */
+    .k-navbar {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      background: var(--white);
+      border-bottom: 2px solid var(--gray-light);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+    .k-logo {
+      font-family: var(--font-heading);
+      font-size: 1.35rem;
+      text-decoration: none;
+      color: var(--almost-black);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .k-logo-accent { color: #7c3aed; }
+    .k-logo-mode {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--graphite);
+      background: var(--gray-light);
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .k-nav-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .k-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius);
+      padding: 6px 14px;
+      font-size: 13px;
+      color: var(--graphite);
+      cursor: pointer;
+      transition: border-color var(--transition);
+    }
+    .k-search:hover { border-color: var(--blue); }
+    .k-icon-btn {
+      background: none;
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius);
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 17px;
+      color: var(--graphite);
+      transition: var(--transition);
+      position: relative;
+    }
+    .k-icon-btn:hover { border-color: var(--blue); background: #f0faff; }
+    .k-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #7c3aed;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      flex-shrink: 0;
+      transition: opacity var(--transition);
+    }
+    .k-avatar:hover { opacity: 0.85; }
+    .k-notif-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      padding: 0 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Hero ── */
+    .k-hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+      background: linear-gradient(145deg, #f5f3ff 0%, #ede9fe 40%, #e0f2fe 100%);
+      text-align: center;
+    }
+    [data-theme="dark"] .k-hero {
+      background: linear-gradient(145deg, #1e1b4b 0%, #1e1450 40%, #071235 100%);
+    }
+    .k-hero-emoji { font-size: 5rem; margin-bottom: 20px; animation: float 3s ease-in-out infinite; }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-10px); }
+    }
+    .k-hero-title {
+      font-family: var(--font-heading);
+      font-size: 2.8rem;
+      color: #7c3aed;
+      margin-bottom: 14px;
+      line-height: 1.1;
+    }
+    [data-theme="dark"] .k-hero-title { color: #a78bfa; }
+    .k-hero-sub {
+      font-size: 1rem;
+      color: var(--graphite);
+      max-width: 500px;
+      line-height: 1.65;
+      margin-bottom: 44px;
+    }
+    .k-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      max-width: 660px;
+      width: 100%;
+      margin-bottom: 44px;
+    }
+    @media (max-width: 580px) { .k-features { grid-template-columns: 1fr; } }
+    .k-feat {
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: 14px;
+      padding: 22px 18px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .k-feat:hover { border-color: #a78bfa; box-shadow: 0 4px 16px rgba(124,58,237,0.1); }
+    .k-feat-icon  { font-size: 2rem; margin-bottom: 10px; }
+    .k-feat-title { font-weight: 800; font-size: 14px; margin-bottom: 4px; color: var(--almost-black); }
+    .k-feat-desc  { font-size: 12px; color: var(--graphite); line-height: 1.45; }
+    .k-wip {
+      background: var(--white);
+      border: 2px dashed #a78bfa;
+      border-radius: 16px;
+      padding: 22px 48px;
+      font-size: 15px;
+      color: var(--graphite);
+      margin-bottom: 28px;
+    }
+  </style>
+</head>
+<body>
+  <!-- ── Navbar ── -->
+  <nav class="k-navbar">
+    <a href="/mode-select.html" class="k-logo">
+      <span>Poly<span class="k-logo-accent">Maker</span></span>
+      <span class="k-logo-mode">Kahoot-режим</span>
+    </a>
+    <div class="k-nav-right">
+      <div class="k-search">🔍 <span>Поиск…</span></div>
+      <button class="k-icon-btn" id="notif-btn" title="Уведомления">
+        🔔
+        <span class="k-notif-badge d-none" id="notif-badge-k">0</span>
+      </button>
+      <button class="k-icon-btn" id="theme-btn" onclick="_toggleTheme()" title="Тема">🌙</button>
+      <a href="/profile.html" class="k-avatar" id="k-avatar" title="Профиль">?</a>
+    </div>
+  </nav>
+
+  <!-- ── Hero ── -->
+  <div class="k-hero">
+    <div class="k-hero-emoji">🎮</div>
+    <h1 class="k-hero-title">Kahoot-режим</h1>
+    <p class="k-hero-sub">
+      Интерактивные викторины в реальном времени — все игроки отвечают одновременно,
+      результаты появляются мгновенно, а победитель определяется по скорости и точности.
+    </p>
+
+    <div class="k-features">
+      <div class="k-feat">
+        <div class="k-feat-icon">⚡</div>
+        <div class="k-feat-title">Real-time</div>
+        <div class="k-feat-desc">Все участники отвечают одновременно по пин-коду</div>
+      </div>
+      <div class="k-feat">
+        <div class="k-feat-icon">🏆</div>
+        <div class="k-feat-title">Таблица лидеров</div>
+        <div class="k-feat-desc">Рейтинг обновляется после каждого вопроса</div>
+      </div>
+      <div class="k-feat">
+        <div class="k-feat-icon">📱</div>
+        <div class="k-feat-title">Любое устройство</div>
+        <div class="k-feat-desc">Телефон, планшет или ноутбук — без установки</div>
+      </div>
+    </div>
+
+    <div class="k-wip">🚧 &nbsp; В разработке — скоро будет доступно</div>
+    <a href="/mode-select.html" class="btn btn-secondary">← К выбору режима</a>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    Auth.requireAuth();
+
+    // Avatar
+    const u = Auth.getUser();
+    if (u) {
+      const av = document.getElementById('k-avatar');
+      const init = ((u.first_name?.[0]||'')+(u.last_name?.[0]||'')||u.username[0]).toUpperCase();
+      av.textContent = init;
+    }
+
+    // Theme btn
+    document.getElementById('theme-btn').textContent =
+      localStorage.getItem('qm_theme') === 'dark' ? '☀️' : '🌙';
+
+    // Unread count badge
+    (async () => {
+      try {
+        const d = await API.get('/api/notifications/unread-count');
+        if (d.count > 0) {
+          const b = document.getElementById('notif-badge-k');
+          b.textContent = d.count > 99 ? '99+' : d.count;
+          b.classList.remove('d-none');
+        }
+      } catch {}
+    })();
+  </script>
+</body>
+</html>

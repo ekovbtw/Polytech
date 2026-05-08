@@ -1,9 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Результаты — PolyTest</title>
+  <title>Результаты — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -131,27 +133,73 @@
       if (data.answers && data.answers.length) {
         document.getElementById('answers-detail').classList.remove('d-none');
         const list = document.getElementById('answers-list');
-        list.innerHTML = data.answers.map(a => {
-          const ok = a.selected_is_correct;
-          return `
-            <div class="result-item ${ok ? 'ok' : 'fail'}">
-              <div class="result-item-q">
-                <span class="result-icon">${ok ? '✅' : '❌'}</span>
-                ${escHtml(a.question_text)}
-              </div>
-              <div class="result-item-a">
-                <span class="text-gray">Ваш ответ:</span>
-                <strong style="color:${ok ? 'var(--green-dark)' : '#c62828'}">
-                  ${escHtml(a.selected_answer || '— не ответил')}
-                </strong>
-                ${!ok && a.correct_answer ? `
-                  <span class="text-gray" style="margin-left:12px;">Правильно:</span>
-                  <strong style="color:var(--green-dark)">${escHtml(a.correct_answer)}</strong>
-                ` : ''}
-              </div>
-            </div>`;
-        }).join('');
+        list.innerHTML = data.answers.map(a => renderAnswerItem(a)).join('');
       }
+    }
+
+    function renderAnswerItem(a) {
+      const type = a.type || 'single_choice';
+      const isReview = a.needs_review;
+
+      // Image attached to question
+      const imgHtml = a.image_url
+        ? `<div style="margin:6px 0;"><img src="${escHtml(a.image_url)}" style="max-height:160px;border-radius:8px;border:2px solid var(--gray-light);" alt=""></div>`
+        : '';
+
+      let statusIcon, statusClass, answerHtml;
+
+      if (type === 'multiple_choice') {
+        const ok = !!a.selected_is_correct;
+        statusIcon  = ok ? '✅' : '❌';
+        statusClass = ok ? 'ok' : 'fail';
+        answerHtml = `
+          <span class="text-gray">Ваш ответ:</span>
+          <strong style="color:${ok ? 'var(--green-dark)' : '#c62828'}">${escHtml(a.selected_answer || '— не выбрано')}</strong>
+          ${!ok && a.correct_answer ? `
+            <span class="text-gray" style="margin-left:12px;">Правильно:</span>
+            <strong style="color:var(--green-dark)">${escHtml(a.correct_answer)}</strong>` : ''}`;
+      } else if (isReview || type === 'file_answer') {
+        statusIcon  = '⏳';
+        statusClass = '';
+        const fileUrl = a.selected_answer;
+        const isImg   = fileUrl && /\.(png|jpe?g|gif|webp|svg)$/i.test(fileUrl);
+        answerHtml = fileUrl ? `
+          <span class="result-needs-review">⏳ Требует проверки преподавателем</span>
+          ${isImg
+            ? `<div style="margin-top:8px;"><img src="${escHtml(fileUrl)}" style="max-width:100%;max-height:200px;border-radius:8px;"></div>`
+            : `<div style="margin-top:6px;"><a href="${escHtml(fileUrl)}" target="_blank" class="result-file-link">📎 Скачать файл</a></div>`
+          }` : '<span class="text-gray">— файл не загружен</span>';
+      } else {
+        const ok = !!a.selected_is_correct;
+        statusIcon  = ok ? '✅' : '❌';
+        statusClass = ok ? 'ok' : 'fail';
+
+        if (type === 'text_answer' || type === 'number_answer') {
+          answerHtml = `
+            <span class="text-gray">Ваш ответ:</span>
+            <strong style="color:${ok ? 'var(--green-dark)' : '#c62828'}">${escHtml(a.selected_answer || '— нет ответа')}</strong>
+            ${!ok && a.correct_answer ? `
+              <span class="text-gray" style="margin-left:12px;">Правильно:</span>
+              <strong style="color:var(--green-dark)">${escHtml(a.correct_answer)}</strong>` : ''}`;
+        } else {
+          answerHtml = `
+            <span class="text-gray">Ваш ответ:</span>
+            <strong style="color:${ok ? 'var(--green-dark)' : '#c62828'}">${escHtml(a.selected_answer || '— не ответил')}</strong>
+            ${!ok && a.correct_answer ? `
+              <span class="text-gray" style="margin-left:12px;">Правильно:</span>
+              <strong style="color:var(--green-dark)">${escHtml(a.correct_answer)}</strong>` : ''}`;
+        }
+      }
+
+      return `
+        <div class="result-item ${statusClass}">
+          <div class="result-item-q">
+            <span class="result-icon">${statusIcon}</span>
+            ${escHtml(a.question_text)}
+          </div>
+          ${imgHtml}
+          <div class="result-item-a">${answerHtml}</div>
+        </div>`;
     }
 
     function escHtml(s) {

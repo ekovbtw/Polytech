@@ -1,0 +1,1184 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Профиль — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ── Profile header ─────────────────────────────── */
+    .profile-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 28px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    /* Avatar */
+    .avatar-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .avatar-circle {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: var(--green);
+      color: var(--white);
+      font-family: var(--font-heading);
+      font-size: 2.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 3px solid var(--green-light);
+      box-shadow: 0 4px 12px rgba(88,204,2,0.25);
+      user-select: none;
+    }
+    .avatar-circle img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .avatar-edit-btn {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+      transition: var(--transition);
+    }
+    .avatar-edit-btn:hover {
+      border-color: var(--blue);
+      background: #f0faff;
+    }
+    #avatar-file-input { display: none; }
+
+    /* Profile info */
+    .profile-info { flex: 1; min-width: 0; }
+    .profile-fullname {
+      font-family: var(--font-heading);
+      font-size: 1.8rem;
+      color: var(--almost-black);
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+    .profile-username {
+      font-size: 14px;
+      color: var(--graphite);
+      margin-bottom: 8px;
+    }
+    .profile-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .profile-institution {
+      font-size: 13px;
+      color: var(--charcoal);
+      font-weight: 600;
+    }
+
+    /* Edit form */
+    .profile-edit-form {
+      background: var(--bg);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-top: 16px;
+      max-width: 480px;
+    }
+    .profile-edit-form h4 {
+      font-family: var(--font-heading);
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      color: var(--charcoal);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 480px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+    .edit-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    /* Privacy toggle row */
+    .privacy-card {
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+    .privacy-card .toggle-row {
+      border-bottom: none;
+      padding: 0;
+    }
+
+    /* History section */
+    .history-list { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Submission / test card with 3-dot menu */
+    .sub-card {
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .sub-card:hover { border-color: var(--green); box-shadow: 0 2px 12px rgba(88,204,2,0.1); }
+    .sub-card-code {
+      background: var(--green-light);
+      color: var(--green-dark);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-family: 'Courier New', monospace;
+      font-weight: 800;
+      font-size: 1rem;
+      letter-spacing: 2px;
+      flex-shrink: 0;
+    }
+    .sub-card-code.blue-code {
+      background: #e0f4ff;
+      color: var(--blue-dark);
+    }
+    .sub-card-info { flex: 1; min-width: 0; }
+    .sub-card-title {
+      font-weight: 800;
+      font-size: 15px;
+      color: var(--almost-black);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .sub-card-meta {
+      font-size: 13px;
+      color: var(--graphite);
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .sub-card-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+    /* 3-dot dropdown */
+    .dot-menu-wrap { position: relative; }
+    .dot-menu-btn {
+      background: none;
+      border: 2px solid var(--gray-light);
+      border-radius: 8px;
+      cursor: pointer;
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--graphite);
+      transition: var(--transition);
+      line-height: 1;
+    }
+    .dot-menu-btn:hover { border-color: var(--blue); color: var(--almost-black); background: #f0faff; }
+    .dot-menu-dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      z-index: 50;
+      min-width: 200px;
+      overflow: hidden;
+    }
+    .dot-menu-dropdown.open { display: block; }
+    .dot-menu-item {
+      display: block;
+      width: 100%;
+      padding: 11px 16px;
+      text-align: left;
+      background: none;
+      border: none;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--charcoal);
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    .dot-menu-item:hover { background: var(--bg); color: var(--almost-black); }
+    .dot-menu-item.danger { color: #e83535; }
+    .dot-menu-item.danger:hover { background: #fff0f0; }
+
+    /* Hidden history placeholder */
+    .history-hidden-card {
+      background: var(--gray-light);
+      border: 2px solid transparent;
+      border-radius: var(--radius-lg);
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--graphite);
+    }
+    .history-hidden-card .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .history-hidden-card p { font-size: 14px; font-weight: 600; }
+
+    /* Profile header action buttons */
+    .profile-header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 600px) {
+      .profile-header { flex-direction: column; }
+      .profile-header-actions { flex-direction: row; }
+      .sub-card { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+
+      <!-- Loading state -->
+      <div id="screen-loading" class="text-center" style="padding:80px 20px;">
+        <div style="font-size:3rem;">⏳</div>
+        <p class="text-gray mt-16">Загружаем профиль…</p>
+      </div>
+
+      <!-- Error state -->
+      <div id="screen-error" class="d-none text-center" style="padding:80px 20px;">
+        <div style="font-size:3rem;">😕</div>
+        <h3 style="font-family:var(--font-heading); margin:12px 0 8px; color:var(--charcoal);">Не удалось загрузить</h3>
+        <p class="text-gray" id="error-msg">Профиль не найден</p>
+        <a href="/dashboard.html" class="btn btn-primary mt-24">На главную</a>
+      </div>
+
+      <!-- Profile content -->
+      <div id="screen-profile" class="d-none">
+
+        <!-- ── Profile card ── -->
+        <div class="card mb-24">
+          <div class="profile-header">
+            <!-- Avatar -->
+            <div class="avatar-wrap">
+              <div class="avatar-circle" id="avatar-display">
+                <span id="avatar-initials"></span>
+              </div>
+              <!-- Edit avatar button — own profile only -->
+              <button class="avatar-edit-btn d-none" id="avatar-edit-btn" title="Сменить фото" onclick="document.getElementById('avatar-file-input').click()">
+                📷
+              </button>
+              <input type="file" id="avatar-file-input" accept="image/*" onchange="uploadAvatar(this)">
+            </div>
+
+            <!-- Info -->
+            <div class="profile-info">
+              <div class="profile-fullname" id="profile-fullname">—</div>
+              <div class="profile-username" id="profile-username">@—</div>
+              <div class="profile-meta">
+                <span class="role-badge" id="profile-role-badge"></span>
+                <span class="profile-institution d-none" id="profile-institution"></span>
+              </div>
+            </div>
+
+            <!-- Edit button — own profile only -->
+            <div class="profile-header-actions d-none" id="own-profile-actions">
+              <button class="btn btn-secondary btn-sm" id="edit-toggle-btn" onclick="toggleEditForm()">
+                ✏️ Редактировать
+              </button>
+            </div>
+
+            <!-- Invite to class button — teacher viewing another user -->
+            <div class="profile-header-actions d-none" id="invite-btn-wrap">
+              <button class="btn btn-primary btn-sm" onclick="openInviteModal()">
+                ➕ Пригласить в класс
+              </button>
+            </div>
+
+            <!-- Friend button — viewing another user -->
+            <div class="profile-header-actions d-none" id="friend-btn-wrap">
+              <!-- rendered by renderFriendBtn() -->
+            </div>
+          </div>
+
+          <!-- Edit form (hidden by default) -->
+          <div class="profile-edit-form d-none" id="edit-form">
+            <h4>Редактирование профиля</h4>
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Имя</label>
+                <input type="text" class="form-input" id="edit-first-name" placeholder="Иван" maxlength="64">
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Фамилия</label>
+                <input type="text" class="form-input" id="edit-last-name" placeholder="Иванов" maxlength="64">
+              </div>
+            </div>
+            <div class="form-group mt-16" style="margin-bottom:0;">
+              <label class="form-label">Учебное заведение</label>
+              <input type="text" class="form-input" id="edit-institution" placeholder="МГТУ им. Баумана" maxlength="128">
+            </div>
+            <div class="edit-actions">
+              <button class="btn btn-primary btn-sm" id="save-edit-btn" onclick="saveProfile()">Сохранить</button>
+              <button class="btn btn-secondary btn-sm" onclick="toggleEditForm(false)">Отмена</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Privacy toggle (own profile only) ── -->
+        <div class="privacy-card d-none" id="privacy-card">
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Показывать историю тестов</div>
+              <div class="toggle-desc">Другие пользователи смогут видеть ваши результаты</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="show-profile-toggle" onchange="updatePrivacy('show_profile', this.checked)">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="toggle-row" style="padding-top:12px; margin-top:12px; border-top:1px solid var(--gray-light);">
+            <div>
+              <div class="toggle-label">Разрешить приглашения в класс</div>
+              <div class="toggle-desc">Преподаватели смогут добавлять вас в свои классы</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="allow-invites-toggle" onchange="updatePrivacy('allow_invites', this.checked)">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="toggle-row" style="padding-top:12px; margin-top:12px; border-top:1px solid var(--gray-light);">
+            <div>
+              <div class="toggle-label">Получать заявки в друзья</div>
+              <div class="toggle-desc">Другие пользователи смогут добавлять вас в друзья</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="allow-friend-requests-toggle" onchange="updatePrivacy('allow_friend_requests', this.checked)">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- ── Friends & requests (own profile only) ── -->
+        <div class="card mb-24 d-none" id="friends-card">
+          <div id="friend-requests-section">
+            <div class="card-header" style="margin-bottom:12px;">
+              <h2 class="card-title">Входящие заявки <span id="requests-badge" class="badge badge-green" style="display:none;margin-left:6px;"></span></h2>
+            </div>
+            <div id="friend-requests-content"></div>
+          </div>
+          <div id="friends-list-section" style="margin-top:20px; padding-top:20px; border-top:1px solid var(--gray-light);">
+            <div class="card-header" style="margin-bottom:12px;">
+              <h2 class="card-title">Друзья</h2>
+            </div>
+            <div id="friends-list-content"></div>
+          </div>
+        </div>
+
+        <!-- ── History section ── -->
+        <div class="card" id="history-card">
+          <div class="card-header">
+            <h2 class="card-title" id="history-title">История тестов</h2>
+          </div>
+          <div id="history-content">
+            <div class="empty-state">
+              <div class="loading">Загрузка…</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- /screen-profile -->
+
+    </div>
+  </main>
+
+  <!-- ── Invite to class modal ── -->
+  <div class="modal-overlay" id="invite-modal">
+    <div class="modal" style="max-width:420px; width:100%;">
+      <h3>➕ Пригласить в класс</h3>
+      <p class="text-gray text-sm mt-8" id="invite-target-name"></p>
+      <div id="invite-classes-wrap" style="margin-top:16px; display:flex; flex-direction:column; gap:8px; max-height:320px; overflow-y:auto;"></div>
+      <div id="invite-loading" class="text-center text-gray text-sm" style="padding:20px 0; display:none;">Загрузка классов…</div>
+      <div class="modal-actions" style="margin-top:20px;">
+        <button class="btn btn-secondary" onclick="closeInviteModal()">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    /* ── Helpers ──────────────────────────────────── */
+    function escHtml(s) {
+      return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /* ── State ────────────────────────────────────── */
+    const params      = new URLSearchParams(location.search);
+    const targetUser  = params.get('user');   // null → own profile
+    const currentUser = Auth.getUser();
+    const isOwnProfile = !targetUser || (currentUser && targetUser === currentUser.username);
+
+    let profileData = null;   // loaded profile
+    let openDropdown = null;  // currently open dropdown element
+
+    /* ── Init ─────────────────────────────────────── */
+    renderNavbar();
+
+    if (!currentUser && isOwnProfile) {
+      window.location.href = '/auth.html';
+    } else {
+      loadProfile();
+    }
+
+    /* ── Load profile ─────────────────────────────── */
+    async function loadProfile() {
+      try {
+        const url = isOwnProfile ? '/api/profile' : `/api/profile/${encodeURIComponent(targetUser)}`;
+        profileData = await API.get(url);
+        renderProfile(profileData);
+      } catch (err) {
+        showScreen('error');
+        document.getElementById('error-msg').textContent = err.message || 'Профиль не найден';
+      }
+    }
+
+    /* ── Render profile ───────────────────────────── */
+    function renderProfile(p) {
+      // Full name
+      const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ') || p.username;
+      document.getElementById('profile-fullname').textContent = fullName;
+      document.getElementById('profile-username').textContent = '@' + p.username;
+      document.title = fullName + ' — PolyMaker';
+
+      // Institution
+      const instEl = document.getElementById('profile-institution');
+      if (p.institution) {
+        instEl.textContent = '🏛 ' + p.institution;
+        instEl.classList.remove('d-none');
+      }
+
+      // Role badge
+      const roleEl = document.getElementById('profile-role-badge');
+      if (p.role === 'teacher') {
+        roleEl.textContent = '👨‍🏫 Преподаватель';
+      } else {
+        roleEl.textContent = '🎓 Студент';
+        roleEl.classList.add('student');
+      }
+
+      // Avatar
+      renderAvatar(p);
+
+      // Own-profile controls
+      if (isOwnProfile) {
+        document.getElementById('own-profile-actions').classList.remove('d-none');
+        document.getElementById('avatar-edit-btn').classList.remove('d-none');
+        document.getElementById('privacy-card').classList.remove('d-none');
+
+        // Prefill edit form
+        document.getElementById('edit-first-name').value  = p.first_name  || '';
+        document.getElementById('edit-last-name').value   = p.last_name   || '';
+        document.getElementById('edit-institution').value = p.institution  || '';
+
+        // Privacy toggles
+        document.getElementById('show-profile-toggle').checked          = !!p.show_profile;
+        document.getElementById('allow-invites-toggle').checked         = p.allow_invites !== 0;
+        document.getElementById('allow-friend-requests-toggle').checked = p.allow_friend_requests !== 0;
+
+        // History title
+        if (p.role === 'teacher') {
+          document.getElementById('history-title').textContent = 'Мои тесты';
+        }
+      } else {
+        // Viewing another user's profile
+        if (currentUser?.role === 'teacher' && p.allow_invites !== 0) {
+          document.getElementById('invite-btn-wrap').classList.remove('d-none');
+        }
+        if (currentUser) {
+          loadFriendshipStatus();
+        }
+      }
+
+      showScreen('profile');
+      if (isOwnProfile) loadFriendData();
+      loadHistory(p);
+    }
+
+    /* ── Avatar ───────────────────────────────────── */
+    function renderAvatar(p) {
+      const circle   = document.getElementById('avatar-display');
+      const initials = document.getElementById('avatar-initials');
+
+      if (p.avatar_url) {
+        initials.textContent = '';
+        const img = document.createElement('img');
+        img.src = p.avatar_url;
+        img.alt = p.username;
+        img.onerror = () => { img.remove(); setInitials(p); };
+        circle.appendChild(img);
+      } else {
+        setInitials(p);
+      }
+    }
+
+    function setInitials(p) {
+      const initials = document.getElementById('avatar-initials');
+      const fn = p.first_name || '';
+      const ln = p.last_name  || '';
+      if (fn || ln) {
+        initials.textContent = ((fn[0] || '') + (ln[0] || '')).toUpperCase();
+      } else {
+        initials.textContent = (p.username || '?')[0].toUpperCase();
+      }
+    }
+
+    async function uploadAvatar(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const form = new FormData();
+      form.append('avatar', file);
+
+      const btn = document.getElementById('avatar-edit-btn');
+      btn.textContent = '⏳';
+      btn.disabled = true;
+
+      try {
+        const token = Auth.getToken();
+        const res = await fetch('/api/profile/avatar', {
+          method: 'POST',
+          headers: token ? { Authorization: 'Bearer ' + token } : {},
+          body: form
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Ошибка загрузки');
+
+        // Update avatar display
+        const circle   = document.getElementById('avatar-display');
+        const initials = document.getElementById('avatar-initials');
+        // Remove old img if present
+        circle.querySelectorAll('img').forEach(el => el.remove());
+        initials.textContent = '';
+        const img = document.createElement('img');
+        img.src = data.avatar_url || URL.createObjectURL(file);
+        img.alt = profileData.username;
+        circle.appendChild(img);
+
+        showToast('Аватар обновлён', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.textContent = '📷';
+        btn.disabled = false;
+        input.value = '';
+      }
+    }
+
+    /* ── Edit form ────────────────────────────────── */
+    function toggleEditForm(forceState) {
+      const form = document.getElementById('edit-form');
+      const btn  = document.getElementById('edit-toggle-btn');
+      const show = forceState !== undefined ? forceState : form.classList.contains('d-none');
+      if (show) {
+        form.classList.remove('d-none');
+        btn.textContent = '✖ Отменить';
+      } else {
+        form.classList.add('d-none');
+        btn.textContent = '✏️ Редактировать';
+      }
+    }
+
+    async function saveProfile() {
+      const btn = document.getElementById('save-edit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Сохранение…';
+      try {
+        const body = {
+          first_name:  document.getElementById('edit-first-name').value.trim(),
+          last_name:   document.getElementById('edit-last-name').value.trim(),
+          institution: document.getElementById('edit-institution').value.trim()
+        };
+        const updated = await API.put('/api/profile', body);
+        // Update local display
+        const fullName = [body.first_name, body.last_name].filter(Boolean).join(' ') || profileData.username;
+        document.getElementById('profile-fullname').textContent = fullName;
+
+        const instEl = document.getElementById('profile-institution');
+        if (body.institution) {
+          instEl.textContent = '🏛 ' + body.institution;
+          instEl.classList.remove('d-none');
+        } else {
+          instEl.textContent = '';
+          instEl.classList.add('d-none');
+        }
+
+        // Update avatar initials in case name changed
+        profileData = { ...profileData, ...body };
+        const circle = document.getElementById('avatar-display');
+        if (!circle.querySelector('img')) {
+          setInitials(profileData);
+        }
+
+        // Update stored user
+        const u = Auth.getUser();
+        if (u) {
+          Object.assign(u, body);
+          localStorage.setItem('qm_user', JSON.stringify(u));
+        }
+
+        showToast('Профиль обновлён', 'success');
+        toggleEditForm(false);
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Сохранить';
+      }
+    }
+
+    /* ── Privacy toggles ──────────────────────────── */
+    async function updatePrivacy(field, value) {
+      const toggleId = field === 'show_profile' ? 'show-profile-toggle' : 'allow-invites-toggle';
+      try {
+        await API.put('/api/profile', { [field]: value });
+        profileData[field] = value;
+        if (field === 'show_profile') {
+          showToast(value ? 'История видна всем' : 'История скрыта', 'success');
+          loadHistory(profileData);
+        } else if (field === 'allow_invites') {
+          showToast(value ? 'Приглашения в класс разрешены' : 'Приглашения в класс отключены', 'success');
+        } else {
+          showToast(value ? 'Заявки в друзья разрешены' : 'Заявки в друзья отключены', 'success');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+        document.getElementById(toggleId).checked = !value;
+      }
+    }
+
+    /* ── Invite to class ──────────────────────────── */
+    let _teacherClasses = null;
+
+    async function openInviteModal() {
+      const modal = document.getElementById('invite-modal');
+      const fullName = [profileData.first_name, profileData.last_name].filter(Boolean).join(' ') || profileData.username;
+      document.getElementById('invite-target-name').textContent = 'Студент: ' + fullName + ' (@' + profileData.username + ')';
+      document.getElementById('invite-classes-wrap').innerHTML = '';
+      document.getElementById('invite-loading').style.display = 'block';
+      modal.classList.add('open');
+
+      try {
+        if (!_teacherClasses) {
+          _teacherClasses = await API.get('/api/classes');
+        }
+        renderInviteClasses(_teacherClasses);
+      } catch (err) {
+        document.getElementById('invite-loading').style.display = 'none';
+        document.getElementById('invite-classes-wrap').innerHTML =
+          `<p class="text-gray text-sm">Не удалось загрузить классы: ${escHtml(err.message)}</p>`;
+      }
+    }
+
+    function renderInviteClasses(classes) {
+      document.getElementById('invite-loading').style.display = 'none';
+      const wrap = document.getElementById('invite-classes-wrap');
+      if (!classes.length) {
+        wrap.innerHTML = '<p class="text-gray text-sm">У вас нет классов. <a href="/manage-classes.html">Создать класс →</a></p>';
+        return;
+      }
+      wrap.innerHTML = classes.map(c => `
+        <button class="btn btn-secondary" style="text-align:left; justify-content:flex-start; gap:10px;"
+                onclick="doInvite(${c.id}, this)">
+          <span style="font-size:1.1rem;">👥</span>
+          <span style="flex:1;">
+            <strong>${escHtml(c.name)}</strong>
+            <span class="text-gray text-sm" style="margin-left:8px;">${c.member_count} уч.</span>
+          </span>
+        </button>`).join('');
+    }
+
+    async function doInvite(classId, btn) {
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      try {
+        const res = await API.post(`/api/classes/${classId}/invite`, { username: profileData.username });
+        closeInviteModal();
+        showToast(`Добавлен в «${res.class_name}»`, 'success');
+      } catch (err) {
+        btn.disabled = false;
+        btn.style.opacity = '';
+        showToast(err.message, 'error');
+      }
+    }
+
+    function closeInviteModal() {
+      document.getElementById('invite-modal').classList.remove('open');
+    }
+
+    /* ── Friends ──────────────────────────────────── */
+    let _friendStatus = null;
+
+    async function loadFriendshipStatus() {
+      try {
+        _friendStatus = await API.get(`/api/friends/status/${encodeURIComponent(targetUser)}`);
+        document.getElementById('friend-btn-wrap').classList.remove('d-none');
+        renderFriendBtn(_friendStatus);
+      } catch (e) { /* not logged in or network error */ }
+    }
+
+    function renderFriendBtn(fs) {
+      const wrap = document.getElementById('friend-btn-wrap');
+      if (!fs) return;
+      if (fs.status === 'none') {
+        wrap.innerHTML = fs.allow_friend_requests !== 0
+          ? `<button class="btn btn-primary btn-sm" onclick="sendFriendRequest()">👤 Добавить в друзья</button>`
+          : '';
+      } else if (fs.status === 'sent') {
+        wrap.innerHTML = `<button class="btn btn-secondary btn-sm" onclick="cancelFriendRelation(${fs.row_id})">⏳ Запрос отправлен ✕</button>`;
+      } else if (fs.status === 'received') {
+        wrap.innerHTML = `
+          <button class="btn btn-primary btn-sm" onclick="acceptFriendRelation(${fs.row_id})">✅ Принять запрос</button>
+          <button class="btn btn-secondary btn-sm" onclick="cancelFriendRelation(${fs.row_id})">❌ Отклонить</button>`;
+      } else if (fs.status === 'friends') {
+        wrap.innerHTML = `<button class="btn btn-secondary btn-sm" onclick="confirmUnfriend(${fs.row_id})">🤝 В друзьях ✕</button>`;
+      }
+    }
+
+    async function sendFriendRequest() {
+      try {
+        const res = await API.post('/api/friends/request', { username: profileData.username });
+        _friendStatus = { status: res.status, row_id: res.row_id };
+        renderFriendBtn(_friendStatus);
+        showToast(res.status === 'accepted' ? 'Теперь вы друзья!' : 'Запрос отправлен', 'success');
+      } catch (e) { showToast(e.message, 'error'); }
+    }
+
+    async function cancelFriendRelation(rowId) {
+      try {
+        await API.delete(`/api/friends/${rowId}`);
+        _friendStatus = { status: 'none', allow_friend_requests: profileData.allow_friend_requests };
+        renderFriendBtn(_friendStatus);
+        showToast('Готово', 'success');
+      } catch (e) { showToast(e.message, 'error'); }
+    }
+
+    async function acceptFriendRelation(rowId) {
+      try {
+        await API.post(`/api/friends/requests/${rowId}/accept`, {});
+        _friendStatus = { status: 'friends', row_id: rowId };
+        renderFriendBtn(_friendStatus);
+        showToast('Заявка принята!', 'success');
+      } catch (e) { showToast(e.message, 'error'); }
+    }
+
+    function confirmUnfriend(rowId) {
+      if (confirm('Удалить из друзей?')) cancelFriendRelation(rowId);
+    }
+
+    /* ── Own profile: friend data ─────────────────── */
+    async function loadFriendData() {
+      document.getElementById('friends-card').classList.remove('d-none');
+      loadFriendRequests();
+      loadFriendsList();
+    }
+
+    async function loadFriendRequests() {
+      const wrap = document.getElementById('friend-requests-content');
+      wrap.innerHTML = '<p class="text-gray text-sm">Загрузка…</p>';
+      try {
+        const requests = await API.get('/api/friends/requests');
+        const badge = document.getElementById('requests-badge');
+        if (requests.length) { badge.textContent = requests.length; badge.style.display = ''; }
+        else badge.style.display = 'none';
+        renderFriendRequests(requests, wrap);
+      } catch (e) { wrap.innerHTML = `<p class="text-gray text-sm">Ошибка загрузки</p>`; }
+    }
+
+    function renderFriendRequests(requests, wrap) {
+      if (!requests.length) {
+        wrap.innerHTML = '<p class="text-gray text-sm" style="padding:4px 0 8px;">Нет входящих заявок</p>';
+        return;
+      }
+      wrap.innerHTML = '<div class="history-list">' + requests.map(r => {
+        const name = [r.first_name, r.last_name].filter(Boolean).join(' ') || r.username;
+        const ini  = ((r.first_name?.[0] || '') + (r.last_name?.[0] || '') || r.username[0]).toUpperCase();
+        const av   = r.avatar_url
+          ? `<img src="${escHtml(r.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+          : ini;
+        return `<div class="sub-card" id="freq-${r.id}">
+          <div class="avatar-circle" style="width:44px;height:44px;font-size:1rem;flex-shrink:0;">${av}</div>
+          <div class="sub-card-info">
+            <a href="/profile.html?user=${encodeURIComponent(r.username)}" class="sub-card-title" style="text-decoration:none;">${escHtml(name)}</a>
+            <div class="sub-card-meta"><span>@${escHtml(r.username)}</span></div>
+          </div>
+          <div class="sub-card-actions">
+            <button class="btn btn-primary btn-sm" onclick="acceptRequest(${r.id})">✅ Принять</button>
+            <button class="btn btn-secondary btn-sm" onclick="rejectRequest(${r.id})">❌</button>
+          </div>
+        </div>`;
+      }).join('') + '</div>';
+    }
+
+    async function acceptRequest(id) {
+      try {
+        await API.post(`/api/friends/requests/${id}/accept`, {});
+        document.getElementById(`freq-${id}`)?.remove();
+        showToast('Заявка принята!', 'success');
+        loadFriendsList();
+      } catch (e) { showToast(e.message, 'error'); }
+    }
+
+    async function rejectRequest(id) {
+      try {
+        await API.delete(`/api/friends/${id}`);
+        document.getElementById(`freq-${id}`)?.remove();
+        showToast('Заявка отклонена', 'success');
+      } catch (e) { showToast(e.message, 'error'); }
+    }
+
+    async function loadFriendsList() {
+      const wrap = document.getElementById('friends-list-content');
+      wrap.innerHTML = '<p class="text-gray text-sm">Загрузка…</p>';
+      try {
+        const friends = await API.get('/api/friends');
+        renderFriendsList(friends, wrap);
+      } catch (e) { wrap.innerHTML = `<p class="text-gray text-sm">Ошибка загрузки</p>`; }
+    }
+
+    function renderFriendsList(friends, wrap) {
+      if (!friends.length) {
+        wrap.innerHTML = '<p class="text-gray text-sm" style="padding:4px 0 8px;">Пока нет друзей</p>';
+        return;
+      }
+      wrap.innerHTML = '<div class="history-list">' + friends.map(f => {
+        const name = [f.first_name, f.last_name].filter(Boolean).join(' ') || f.username;
+        const ini  = ((f.first_name?.[0] || '') + (f.last_name?.[0] || '') || f.username[0]).toUpperCase();
+        const av   = f.avatar_url
+          ? `<img src="${escHtml(f.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+          : ini;
+        return `<div class="sub-card" id="friend-${f.friendship_id}">
+          <div class="avatar-circle" style="width:44px;height:44px;font-size:1rem;flex-shrink:0;">${av}</div>
+          <div class="sub-card-info">
+            <a href="/profile.html?user=${encodeURIComponent(f.username)}" class="sub-card-title" style="text-decoration:none;">${escHtml(name)}</a>
+            <div class="sub-card-meta"><span>@${escHtml(f.username)}</span></div>
+          </div>
+          <div class="sub-card-actions">
+            <button class="btn btn-secondary btn-sm" onclick="removeFriend(${f.friendship_id})">✕ Удалить</button>
+          </div>
+        </div>`;
+      }).join('') + '</div>';
+    }
+
+    async function removeFriend(id) {
+      if (!confirm('Удалить из друзей?')) return;
+      try {
+        await API.delete(`/api/friends/${id}`);
+        document.getElementById(`friend-${id}`)?.remove();
+        showToast('Удалён из друзей', 'success');
+      } catch (e) { showToast(e.message, 'error'); }
+    }
+
+    document.getElementById('invite-modal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeInviteModal();
+    });
+
+    /* ── Load history ─────────────────────────────── */
+    async function loadHistory(p) {
+      const wrap = document.getElementById('history-content');
+
+      // If viewing another user's profile and show_profile is false
+      if (!isOwnProfile && !p.show_profile) {
+        wrap.innerHTML = hiddenHistoryHTML('Пользователь скрыл историю');
+        return;
+      }
+
+      // Own profile: check show_profile for display purposes but still load data
+      if (isOwnProfile && !p.show_profile) {
+        // show grey note, then still show data (only they can see)
+        // Actually spec says: if show_profile is false → show grey card instead of the list
+        wrap.innerHTML = hiddenHistoryHTML('Пользователь скрыл историю тестов');
+        return;
+      }
+
+      // Other user profile, show_profile is true → load public history
+      if (!isOwnProfile) {
+        try {
+          const data = await API.get(`/api/profile/${encodeURIComponent(targetUser)}/submissions`);
+          if (data.role === 'teacher') {
+            renderPublicTeacherTests(wrap, data.tests || []);
+          } else {
+            renderStudentHistory(wrap, data, false);
+          }
+        } catch (err) {
+          wrap.innerHTML = `<div class="empty-state"><p class="text-gray">${err.message === 'История скрыта' ? 'Пользователь скрыл историю' : 'История недоступна'}</p></div>`;
+        }
+        return;
+      }
+
+      // Own profile
+      if (p.role === 'teacher') {
+        await loadTeacherTests(wrap);
+      } else {
+        await loadStudentSubmissions(wrap);
+      }
+    }
+
+    /* ── Student submissions (own) ─────────────────── */
+    async function loadStudentSubmissions(wrap) {
+      try {
+        const subs = await API.get('/api/student/submissions');
+        renderStudentHistory(wrap, subs, true);
+      } catch (err) {
+        wrap.innerHTML = `<div class="empty-state"><p class="text-gray">Не удалось загрузить историю</p></div>`;
+      }
+    }
+
+    function renderStudentHistory(wrap, subs, canManage) {
+      const visible = subs.filter(s => !s.is_hidden);
+      if (!visible.length) {
+        wrap.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h3>Пока нет попыток</h3>
+            <p>Пройдите тест — он появится здесь</p>
+          </div>`;
+        return;
+      }
+
+      const items = visible.map(s => {
+        const resultHtml = s.result_hidden
+          ? `<span class="badge badge-gray">Результат скрыт</span>`
+          : `<span class="score-pill ${scorePillClass(s.score, s.total_questions)}">${s.score} / ${s.total_questions}</span>`;
+
+        const detailBtn = (s.show_results && !s.result_hidden)
+          ? `<a href="/results.html?id=${s.id}" class="btn btn-secondary btn-sm">Подробнее</a>`
+          : '';
+
+        const dotMenu = canManage ? dotMenuHtml(`sub-menu-${s.id}`, [
+          { label: 'Скрыть результат', action: `hideSubResult(${s.id})` },
+          { label: 'Скрыть тест',      action: `hideSubTest(${s.id})`   }
+        ]) : '';
+
+        return `
+          <div class="sub-card" id="sub-card-${s.id}">
+            <div class="sub-card-code blue-code">${escHtml(s.code || '—')}</div>
+            <div class="sub-card-info">
+              <div class="sub-card-title">${escHtml(s.title)}</div>
+              <div class="sub-card-meta">
+                <span>📅 ${fmtDate(s.completed_at)}</span>
+                ${resultHtml}
+              </div>
+            </div>
+            <div class="sub-card-actions">
+              ${detailBtn}
+              ${dotMenu}
+            </div>
+          </div>`;
+      }).join('');
+
+      wrap.innerHTML = `<div class="history-list">${items}</div>`;
+    }
+
+    async function hideSubResult(id) {
+      closeAllDropdowns();
+      try {
+        await patchRequest(`/api/student/submissions/${id}/visibility`, { hide_result: 1 });
+        showToast('Результат скрыт', 'success');
+        loadStudentSubmissions(document.getElementById('history-content'));
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function hideSubTest(id) {
+      closeAllDropdowns();
+      try {
+        await patchRequest(`/api/student/submissions/${id}/visibility`, { hide_test: 1 });
+        showToast('Тест скрыт из профиля', 'success');
+        // Remove card
+        const card = document.getElementById(`sub-card-${id}`);
+        if (card) card.remove();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    /* ── Teacher tests (public view — another user) ── */
+    function renderPublicTeacherTests(wrap, tests) {
+      if (!tests.length) {
+        wrap.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📝</div>
+            <h3>Нет опубликованных тестов</h3>
+          </div>`;
+        return;
+      }
+      const items = tests.map(t => `
+        <div class="sub-card">
+          <div class="sub-card-code">${escHtml(t.code)}</div>
+          <div class="sub-card-info">
+            <div class="sub-card-title">${escHtml(t.title)}</div>
+            <div class="sub-card-meta">
+              <span>📋 ${t.question_count} вопр.</span>
+              <span>👥 ${t.submission_count} попыток</span>
+              <span>📅 ${fmtDate(t.created_at)}</span>
+            </div>
+          </div>
+          <div class="sub-card-actions">
+            <a href="/dashboard.html?code=${escHtml(t.code)}" class="btn btn-secondary btn-sm">Пройти →</a>
+          </div>
+        </div>`).join('');
+      wrap.innerHTML = `<div class="history-list">${items}</div>`;
+    }
+
+    /* ── Teacher tests (own) ──────────────────────── */
+    async function loadTeacherTests(wrap) {
+      try {
+        const tests = await API.get('/api/tests');
+        const visible = tests.filter(t => !t.is_hidden);
+
+        if (!visible.length) {
+          wrap.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">📝</div>
+              <h3>Нет опубликованных тестов</h3>
+              <p>Созданные тесты появятся здесь</p>
+              <a href="/create-test.html" class="btn btn-primary mt-16">➕ Создать тест</a>
+            </div>`;
+          return;
+        }
+
+        const items = visible.map(t => {
+          const dotMenu = dotMenuHtml(`test-menu-${t.id}`, [
+            { label: 'Скрыть тест из профиля', action: `hideTestFromProfile(${t.id})`, cls: 'danger' }
+          ]);
+          return `
+            <div class="sub-card" id="test-card-${t.id}">
+              <div class="sub-card-code">${escHtml(t.code)}</div>
+              <div class="sub-card-info">
+                <div class="sub-card-title">${escHtml(t.title)}</div>
+                <div class="sub-card-meta">
+                  <span>📋 ${t.question_count} вопр.</span>
+                  <span>👥 ${t.submission_count} попыток</span>
+                  <span>📅 ${fmtDate(t.created_at)}</span>
+                </div>
+              </div>
+              <div class="sub-card-actions">
+                <a href="/test-results.html?id=${t.id}" class="btn btn-secondary btn-sm">📊 Итоги</a>
+                ${dotMenu}
+              </div>
+            </div>`;
+        }).join('');
+
+        wrap.innerHTML = `<div class="history-list">${items}</div>`;
+      } catch (err) {
+        wrap.innerHTML = `<div class="empty-state"><p class="text-gray">Не удалось загрузить тесты</p></div>`;
+      }
+    }
+
+    async function hideTestFromProfile(id) {
+      closeAllDropdowns();
+      try {
+        await patchRequest(`/api/tests/${id}/profile-visibility`, { hidden: 1 });
+        showToast('Тест скрыт из профиля', 'success');
+        const card = document.getElementById(`test-card-${id}`);
+        if (card) card.remove();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    /* ── 3-dot dropdown ───────────────────────────── */
+    function dotMenuHtml(id, items) {
+      const itemsHtml = items.map(i =>
+        `<button class="dot-menu-item ${i.cls || ''}" onclick="${escHtml(i.action)}">${escHtml(i.label)}</button>`
+      ).join('');
+      return `
+        <div class="dot-menu-wrap">
+          <button class="dot-menu-btn" onclick="toggleDropdown(event,'${id}')" title="Действия">⋮</button>
+          <div class="dot-menu-dropdown" id="${id}">${itemsHtml}</div>
+        </div>`;
+    }
+
+    function toggleDropdown(e, id) {
+      e.stopPropagation();
+      const menu = document.getElementById(id);
+      if (!menu) return;
+      const isOpen = menu.classList.contains('open');
+      closeAllDropdowns();
+      if (!isOpen) {
+        menu.classList.add('open');
+        openDropdown = menu;
+      }
+    }
+
+    function closeAllDropdowns() {
+      document.querySelectorAll('.dot-menu-dropdown.open').forEach(m => m.classList.remove('open'));
+      openDropdown = null;
+    }
+
+    document.addEventListener('click', () => closeAllDropdowns());
+
+    /* ── Helpers ──────────────────────────────────── */
+    function hiddenHistoryHTML(msg) {
+      return `
+        <div class="history-hidden-card">
+          <div class="empty-icon">🔒</div>
+          <p>${escHtml(msg)}</p>
+        </div>`;
+    }
+
+    async function patchRequest(url, body) {
+      const token = Auth.getToken();
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Ошибка сервера');
+      return data;
+    }
+
+    function showScreen(name) {
+      ['loading', 'error', 'profile'].forEach(s => {
+        document.getElementById('screen-' + s).classList.toggle('d-none', s !== name);
+      });
+    }
+  </script>
+</body>
+</html>

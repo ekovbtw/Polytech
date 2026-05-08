@@ -1,0 +1,1009 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Банк вопросов — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ── Bank header ── */
+    .bank-header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .bank-header-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .bank-title-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+    .bank-title-view {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bank-title-view h1 {
+      font-family: var(--font-heading);
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      line-height: 1.2;
+      word-break: break-word;
+    }
+    .bank-desc-view {
+      color: var(--graphite);
+      font-size: 14px;
+      margin-top: 4px;
+      word-break: break-word;
+    }
+    .edit-inline-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+    .edit-inline-btn:hover { background: var(--gray-light); }
+    .bank-title-edit { display: none; flex-direction: column; gap: 6px; }
+    .bank-title-edit.active { display: flex; }
+    .bank-title-view.hidden { display: none; }
+    .bank-desc-edit { display: none; flex-direction: column; gap: 6px; }
+    .bank-desc-edit.active { display: flex; }
+    .bank-desc-view-wrap { display: flex; align-items: flex-start; gap: 6px; }
+    .bank-desc-view.hidden { display: none; }
+    .bank-title-edit-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .bank-title-input {
+      flex: 1;
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+    }
+    .bank-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .bank-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--graphite);
+      margin-bottom: 8px;
+    }
+    /* ── Author block (viewer) ── */
+    .author-block {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius-lg);
+      padding: 14px 18px;
+      margin-bottom: 24px;
+    }
+    .author-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--white);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .author-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    .author-info { flex: 1; min-width: 0; }
+    .author-name { font-weight: 700; font-size: 15px; }
+    .author-username { font-size: 13px; color: var(--graphite); }
+    .author-inst { font-size: 12px; color: var(--gray); margin-top: 2px; }
+    /* ── Toolbar ── */
+    .questions-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+    /* ── Question item ── */
+    .bank-question-item {
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: border-color var(--transition);
+    }
+    .bank-question-item:hover { border-color: var(--blue); }
+    .bank-question-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 14px 16px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .bank-question-cb {
+      margin-top: 3px;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+      accent-color: var(--blue);
+    }
+    .bank-question-num {
+      font-weight: 700;
+      color: var(--graphite);
+      font-size: 13px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .bank-question-text {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .bank-question-chevron {
+      font-size: 12px;
+      color: var(--gray);
+      flex-shrink: 0;
+      margin-top: 3px;
+      transition: transform var(--transition);
+    }
+    .bank-question-item.expanded .bank-question-chevron {
+      transform: rotate(180deg);
+    }
+    .bank-question-actions {
+      flex-shrink: 0;
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+    }
+    .bank-answer-list {
+      display: none;
+      padding: 0 16px 14px 44px;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .bank-question-item.expanded .bank-answer-list {
+      display: flex;
+    }
+    .bank-answer-item {
+      font-size: 13px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1.5px solid var(--gray-light);
+      line-height: 1.4;
+    }
+    .bank-answer-item.correct {
+      background: var(--green-light);
+      border-color: var(--green);
+      font-weight: 600;
+      color: var(--green-dark);
+    }
+    /* ── Badge ── */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .badge-green { background: var(--green-light); color: var(--green-dark); }
+    .badge-gray  { background: var(--gray-light); color: var(--graphite); }
+    /* ── Empty / loading ── */
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--graphite); }
+    .loading { text-align: center; padding: 60px 20px; font-size: 18px; color: var(--graphite); }
+    /* ── Modal import step toggle ── */
+    .import-step { display: none; }
+    .import-step.active { display: block; }
+    /* ── Select all row ── */
+    .select-all-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      font-size: 13px;
+      color: var(--graphite);
+      border-bottom: 1px solid var(--gray-light);
+      margin-bottom: 8px;
+    }
+    /* ── Preview questions list in modal ── */
+    .preview-q-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--gray-light);
+      font-size: 13px;
+    }
+    .preview-q-item:last-child { border-bottom: none; }
+    .preview-q-item label { cursor: pointer; line-height: 1.4; }
+    /* ── Misc ── */
+    .mt-8  { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-24 { margin-top: 24px; }
+    .d-none { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+
+      <!-- Loading state -->
+      <div id="loading-state">
+        <div class="loading">⏳ Загрузка банка вопросов…</div>
+      </div>
+
+      <!-- Error state -->
+      <div id="error-state" class="d-none">
+        <div class="card" style="text-align:center; padding:48px 24px;">
+          <div style="font-size:3rem; margin-bottom:16px;">😕</div>
+          <h2 id="error-title">Банк не найден</h2>
+          <p id="error-msg" class="text-gray mt-8">Банк вопросов не существует или у вас нет доступа к нему.</p>
+          <div class="mt-16">
+            <a href="/question-banks.html" class="btn btn-primary">← Мои банки</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main content (shown after load) -->
+      <div id="bank-content" class="d-none">
+
+        <!-- ── OWNER MODE ── -->
+        <div id="owner-section" class="d-none">
+
+          <!-- Back link -->
+          <a href="/question-banks.html" class="btn btn-secondary btn-sm" style="margin-bottom:20px; display:inline-flex;">
+            ← Мои банки
+          </a>
+
+          <!-- Bank header card -->
+          <div class="card" style="margin-bottom:24px;">
+            <div class="bank-header">
+
+              <!-- Title row -->
+              <div class="bank-title-wrap">
+                <div class="bank-title-view" id="title-view">
+                  <h1 id="bank-name-display"></h1>
+                  <button class="edit-inline-btn" title="Редактировать название" onclick="startEditTitle()">✏️</button>
+                </div>
+                <div class="bank-title-edit" id="title-edit">
+                  <div class="bank-title-edit-row">
+                    <input id="title-input" class="form-input bank-title-input" type="text" maxlength="120" placeholder="Название банка">
+                    <button class="btn btn-primary btn-sm" onclick="saveTitle()">✓ Сохранить</button>
+                    <button class="btn btn-secondary btn-sm" onclick="cancelEditTitle()">Отмена</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Description row -->
+              <div>
+                <div class="bank-desc-view-wrap" id="desc-view-wrap">
+                  <span class="bank-desc-view" id="bank-desc-display"></span>
+                  <button class="edit-inline-btn" title="Редактировать описание" onclick="startEditDesc()" style="font-size:14px;">✏️</button>
+                </div>
+                <div class="bank-desc-edit" id="desc-edit">
+                  <textarea id="desc-input" class="form-input" rows="3" maxlength="500" placeholder="Описание (необязательно)"></textarea>
+                  <div style="display:flex; gap:6px;">
+                    <button class="btn btn-primary btn-sm" onclick="saveDesc()">✓ Сохранить</button>
+                    <button class="btn btn-secondary btn-sm" onclick="cancelEditDesc()">Отмена</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions row -->
+              <div class="bank-header-top" style="margin-top:8px;">
+                <div class="bank-meta">
+                  <span>📋 <strong id="owner-q-count">0</strong> вопросов</span>
+                  <span id="owner-visibility-badge"></span>
+                </div>
+                <div class="bank-actions">
+                  <button class="btn btn-secondary btn-sm" id="visibility-btn" onclick="toggleVisibility()">🌐 Сделать публичным</button>
+                  <button class="btn btn-danger btn-sm" onclick="openDeleteModal()">🗑️ Удалить банк</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Toolbar -->
+          <div class="questions-toolbar">
+            <div class="toolbar-left">
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; user-select:none;">
+                <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll()" style="accent-color:var(--blue);">
+                <span>Выбрать все</span>
+              </label>
+              <button class="btn btn-danger btn-sm d-none" id="delete-selected-btn" onclick="deleteSelectedConfirm()">
+                ☑️ Удалить выбранные
+              </button>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openImportModal()">➕ Импорт из теста</button>
+          </div>
+
+          <!-- Questions list (owner) -->
+          <div id="owner-questions-list"></div>
+          <div id="owner-empty" class="empty-state d-none">
+            <div style="font-size:2.5rem; margin-bottom:12px;">📭</div>
+            <p>В банке пока нет вопросов.</p>
+            <p class="text-gray text-sm mt-8">Добавьте вопросы через «Импорт из теста».</p>
+          </div>
+
+        </div>
+        <!-- END OWNER MODE -->
+
+        <!-- ── VIEWER MODE ── -->
+        <div id="viewer-section" class="d-none">
+
+          <!-- Back link (generic) -->
+          <a href="/question-banks.html" class="btn btn-secondary btn-sm" style="margin-bottom:20px; display:inline-flex;">
+            ← К банкам
+          </a>
+
+          <!-- Bank title & meta -->
+          <div class="card" style="margin-bottom:20px;">
+            <div style="display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+              <div style="flex:1; min-width:0;">
+                <h1 id="viewer-bank-name" style="font-family:var(--font-heading); font-size:clamp(1.4rem,3vw,2rem); line-height:1.2; word-break:break-word;"></h1>
+                <p id="viewer-bank-desc" class="text-gray" style="font-size:14px; margin-top:6px;"></p>
+                <div class="bank-meta" style="margin-top:10px;">
+                  <span>📋 <strong id="viewer-q-count">0</strong> вопросов</span>
+                  <span class="badge badge-green">🌐 Публичный</span>
+                </div>
+              </div>
+              <!-- Favorite button — only for other teachers -->
+              <div id="fav-btn-wrap" class="d-none">
+                <button class="btn btn-secondary btn-sm" id="fav-btn" onclick="toggleFav()">❤️ В избранное</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Author block -->
+          <div class="author-block" id="author-block">
+            <div class="author-avatar" id="author-avatar">?</div>
+            <div class="author-info">
+              <div class="author-name" id="author-name"></div>
+              <div class="author-username" id="author-username"></div>
+              <div class="author-inst" id="author-inst"></div>
+            </div>
+          </div>
+
+          <!-- Questions list (viewer) -->
+          <div id="viewer-questions-list"></div>
+          <div id="viewer-empty" class="empty-state d-none">
+            <div style="font-size:2.5rem; margin-bottom:12px;">📭</div>
+            <p class="text-gray">В этом банке пока нет вопросов.</p>
+          </div>
+
+        </div>
+        <!-- END VIEWER MODE -->
+
+      </div>
+      <!-- END bank-content -->
+
+    </div>
+  </main>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- Modal: Delete bank -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal">
+      <h3>🗑️ Удалить банк вопросов?</h3>
+      <p class="text-gray mt-8">Все вопросы в этом банке будут удалены. Это действие нельзя отменить.</p>
+      <div class="modal-actions mt-16">
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">Отмена</button>
+        <button class="btn btn-danger" onclick="confirmDeleteBank()">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- Modal: Import from test (owner) -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="import-modal">
+    <div class="modal" style="max-width:540px; width:100%;">
+      <h3>➕ Импорт вопросов из теста</h3>
+
+      <!-- Step 1 -->
+      <div class="import-step active" id="import-step-1">
+        <div class="form-group mt-16">
+          <label class="form-label" for="import-test-select">Выберите тест</label>
+          <select class="form-input" id="import-test-select">
+            <option value="">— Выберите тест —</option>
+          </select>
+        </div>
+        <div id="import-step1-alert" class="text-gray text-sm mt-8 d-none"></div>
+        <div class="modal-actions mt-16">
+          <button class="btn btn-secondary" onclick="closeImportModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="loadTestQuestions()">Загрузить вопросы →</button>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="import-step" id="import-step-2">
+        <p class="text-gray text-sm mt-8" id="import-test-title-label"></p>
+        <div class="select-all-row mt-16">
+          <input type="checkbox" id="import-select-all" onchange="toggleImportSelectAll()" style="accent-color:var(--blue);">
+          <label for="import-select-all" style="cursor:pointer;">Выбрать все</label>
+        </div>
+        <div id="import-questions-list" style="max-height:320px; overflow-y:auto;"></div>
+        <div class="modal-actions mt-16">
+          <button class="btn btn-secondary" onclick="backToStep1()">← Назад</button>
+          <button class="btn btn-primary" onclick="doImport()">Добавить в банк</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <script src="/js/common.js"></script>
+  <script>
+    /* ══════════════════════════════════════════════════════
+       Helpers
+    ══════════════════════════════════════════════════════ */
+    function escHtml(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /* ══════════════════════════════════════════════════════
+       State
+    ══════════════════════════════════════════════════════ */
+    let bankId = null;
+    let bankData = null;  // full bank object from API
+    let isOwner = false;
+
+    /* ══════════════════════════════════════════════════════
+       Init
+    ══════════════════════════════════════════════════════ */
+    renderNavbar();
+    if (!Auth.requireAuth()) { /* redirects to auth.html */ }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const params = new URLSearchParams(location.search);
+      bankId = params.get('id');
+      if (!bankId) {
+        showError('Не указан банк', 'Параметр id отсутствует в URL.');
+        return;
+      }
+      await loadBank();
+    });
+
+    /* ══════════════════════════════════════════════════════
+       Load bank
+    ══════════════════════════════════════════════════════ */
+    async function loadBank() {
+      show('loading-state');
+      hide('bank-content');
+      hide('error-state');
+
+      try {
+        bankData = await API.get(`/api/banks/${bankId}`);
+      } catch (err) {
+        const msg = err.message || '';
+        if (msg.includes('404') || msg.toLowerCase().includes('не найден') || msg.toLowerCase().includes('not found')) {
+          showError('Банк не найден', 'Банк вопросов не существует или был удалён.');
+        } else if (msg.includes('403') || msg.toLowerCase().includes('нет доступа') || msg.toLowerCase().includes('forbidden')) {
+          showError('Нет доступа', 'Этот банк является приватным.');
+        } else {
+          showError('Ошибка загрузки', msg || 'Не удалось загрузить банк вопросов.');
+        }
+        return;
+      }
+
+      hide('loading-state');
+      show('bank-content');
+
+      const user = Auth.getUser();
+      isOwner = user && bankData.teacher_id === user.id;
+
+      if (isOwner) {
+        renderOwnerMode();
+      } else {
+        renderViewerMode();
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════
+       OWNER MODE
+    ══════════════════════════════════════════════════════ */
+    function renderOwnerMode() {
+      show('owner-section');
+      hide('viewer-section');
+
+      // Title & description
+      document.getElementById('bank-name-display').textContent = bankData.name;
+      document.getElementById('bank-desc-display').textContent = bankData.description || '';
+      if (!bankData.description) {
+        document.getElementById('bank-desc-display').textContent = 'Нет описания';
+        document.getElementById('bank-desc-display').style.fontStyle = 'italic';
+      }
+
+      // Stats & visibility
+      updateOwnerVisibility();
+      renderOwnerQuestions();
+    }
+
+    function updateOwnerVisibility() {
+      const badge = document.getElementById('owner-visibility-badge');
+      const btn   = document.getElementById('visibility-btn');
+      if (bankData.is_public) {
+        badge.innerHTML = '<span class="badge badge-green">🌐 Публичный</span>';
+        btn.textContent = '🔒 Сделать приватным';
+      } else {
+        badge.innerHTML = '<span class="badge badge-gray">🔒 Приватный</span>';
+        btn.textContent = '🌐 Сделать публичным';
+      }
+      document.getElementById('owner-q-count').textContent = (bankData.questions || []).length;
+    }
+
+    function renderOwnerQuestions() {
+      const list = document.getElementById('owner-questions-list');
+      const empty = document.getElementById('owner-empty');
+      const questions = bankData.questions || [];
+
+      if (questions.length === 0) {
+        list.innerHTML = '';
+        show('owner-empty');
+        return;
+      }
+      hide('owner-empty');
+
+      list.innerHTML = questions.map((q, i) => buildQuestionItem(q, i + 1, true)).join('');
+
+      // Re-wire checkboxes
+      list.querySelectorAll('.bank-question-cb').forEach(cb => {
+        cb.addEventListener('change', onCheckboxChange);
+      });
+
+      // Collapsible headers
+      list.querySelectorAll('.bank-question-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+          if (e.target.classList.contains('bank-question-cb') ||
+              e.target.closest('.bank-question-actions')) return;
+          const item = header.closest('.bank-question-item');
+          item.classList.toggle('expanded');
+        });
+      });
+
+      // Reset select-all
+      document.getElementById('select-all-cb').checked = false;
+      updateDeleteSelectedBtn();
+    }
+
+    function buildQuestionItem(q, num, ownerMode) {
+      const answers = (q.answers || []).map(a => `
+        <div class="bank-answer-item${a.is_correct ? ' correct' : ''}">
+          ${a.is_correct ? '✅ ' : ''}${escHtml(a.answer_text)}
+        </div>`).join('');
+
+      const cbHtml = ownerMode
+        ? `<input type="checkbox" class="bank-question-cb" data-qid="${q.id}">`
+        : '';
+
+      const deleteBtn = ownerMode
+        ? `<div class="bank-question-actions">
+             <button class="btn btn-danger btn-sm" title="Удалить вопрос"
+               onclick="deleteQuestion(${q.id}, event)">🗑️</button>
+           </div>`
+        : '';
+
+      return `
+        <div class="bank-question-item" data-qid="${q.id}">
+          <div class="bank-question-header">
+            ${cbHtml}
+            <span class="bank-question-num">#${num}</span>
+            <span class="bank-question-text">${escHtml(q.question_text)}</span>
+            <span class="bank-question-chevron">▼</span>
+            ${deleteBtn}
+          </div>
+          <div class="bank-answer-list">
+            ${answers || '<div class="text-gray text-sm">Нет вариантов ответа</div>'}
+          </div>
+        </div>`;
+    }
+
+    /* ── Inline title edit ── */
+    function startEditTitle() {
+      document.getElementById('title-input').value = bankData.name;
+      document.getElementById('title-view').classList.add('hidden');
+      document.getElementById('title-edit').classList.add('active');
+      document.getElementById('title-input').focus();
+    }
+    function cancelEditTitle() {
+      document.getElementById('title-view').classList.remove('hidden');
+      document.getElementById('title-edit').classList.remove('active');
+    }
+    async function saveTitle() {
+      const val = document.getElementById('title-input').value.trim();
+      if (!val) { showToast('Название не может быть пустым', 'error'); return; }
+      try {
+        await API.put(`/api/banks/${bankId}`, { name: val });
+        bankData.name = val;
+        document.getElementById('bank-name-display').textContent = val;
+        cancelEditTitle();
+        showToast('Название сохранено', 'success');
+      } catch (err) {
+        showToast(err.message || 'Ошибка сохранения', 'error');
+      }
+    }
+
+    /* ── Inline description edit ── */
+    function startEditDesc() {
+      document.getElementById('desc-input').value = bankData.description || '';
+      document.getElementById('desc-view-wrap').classList.add('hidden');
+      document.getElementById('desc-edit').classList.add('active');
+      document.getElementById('desc-input').focus();
+    }
+    function cancelEditDesc() {
+      document.getElementById('desc-view-wrap').classList.remove('hidden');
+      document.getElementById('desc-edit').classList.remove('active');
+    }
+    async function saveDesc() {
+      const val = document.getElementById('desc-input').value.trim();
+      try {
+        await API.put(`/api/banks/${bankId}`, { description: val });
+        bankData.description = val;
+        const el = document.getElementById('bank-desc-display');
+        if (val) {
+          el.textContent = val;
+          el.style.fontStyle = '';
+        } else {
+          el.textContent = 'Нет описания';
+          el.style.fontStyle = 'italic';
+        }
+        cancelEditDesc();
+        showToast('Описание сохранено', 'success');
+      } catch (err) {
+        showToast(err.message || 'Ошибка сохранения', 'error');
+      }
+    }
+
+    /* ── Visibility toggle ── */
+    async function toggleVisibility() {
+      try {
+        await API.put(`/api/banks/${bankId}`, { is_public: !bankData.is_public });
+        bankData.is_public = !bankData.is_public;
+        updateOwnerVisibility();
+        showToast(bankData.is_public ? 'Банк стал публичным' : 'Банк стал приватным', 'success');
+      } catch (err) {
+        showToast(err.message || 'Ошибка', 'error');
+      }
+    }
+
+    /* ── Delete single question ── */
+    async function deleteQuestion(qid, event) {
+      event.stopPropagation();
+      if (!confirm('Удалить этот вопрос из банка?')) return;
+      try {
+        await API.delete(`/api/banks/${bankId}/questions/${qid}`);
+        bankData.questions = (bankData.questions || []).filter(q => q.id !== qid);
+        renderOwnerQuestions();
+        updateOwnerVisibility();
+        showToast('Вопрос удалён', 'success');
+      } catch (err) {
+        showToast(err.message || 'Ошибка удаления', 'error');
+      }
+    }
+
+    /* ── Bulk select ── */
+    function onCheckboxChange() {
+      updateDeleteSelectedBtn();
+      const questions = bankData.questions || [];
+      const allChecked = questions.length > 0 &&
+        questions.every(q => {
+          const cb = document.querySelector(`.bank-question-cb[data-qid="${q.id}"]`);
+          return cb && cb.checked;
+        });
+      document.getElementById('select-all-cb').checked = allChecked;
+    }
+
+    function toggleSelectAll() {
+      const checked = document.getElementById('select-all-cb').checked;
+      document.querySelectorAll('.bank-question-cb').forEach(cb => { cb.checked = checked; });
+      updateDeleteSelectedBtn();
+    }
+
+    function updateDeleteSelectedBtn() {
+      const anyChecked = Array.from(document.querySelectorAll('.bank-question-cb')).some(cb => cb.checked);
+      const btn = document.getElementById('delete-selected-btn');
+      if (anyChecked) btn.classList.remove('d-none');
+      else            btn.classList.add('d-none');
+    }
+
+    function getCheckedQids() {
+      return Array.from(document.querySelectorAll('.bank-question-cb:checked')).map(cb => Number(cb.dataset.qid));
+    }
+
+    async function deleteSelectedConfirm() {
+      const ids = getCheckedQids();
+      if (ids.length === 0) return;
+      if (!confirm(`Удалить ${ids.length} вопрос(ов) из банка?`)) return;
+      let failed = 0;
+      for (const qid of ids) {
+        try {
+          await API.delete(`/api/banks/${bankId}/questions/${qid}`);
+          bankData.questions = (bankData.questions || []).filter(q => q.id !== qid);
+        } catch {
+          failed++;
+        }
+      }
+      renderOwnerQuestions();
+      updateOwnerVisibility();
+      if (failed > 0) showToast(`Удалено ${ids.length - failed}, ошибок: ${failed}`, 'error');
+      else showToast(`Удалено ${ids.length} вопрос(ов)`, 'success');
+    }
+
+    /* ── Delete bank modal ── */
+    function openDeleteModal()  { showModal('delete-modal'); }
+    function closeDeleteModal() { hideModal('delete-modal'); }
+
+    async function confirmDeleteBank() {
+      try {
+        await API.delete(`/api/banks/${bankId}`);
+        showToast('Банк удалён', 'success');
+        window.location.href = '/question-banks.html';
+      } catch (err) {
+        showToast(err.message || 'Ошибка удаления', 'error');
+        closeDeleteModal();
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════
+       VIEWER MODE
+    ══════════════════════════════════════════════════════ */
+    function renderViewerMode() {
+      hide('owner-section');
+      show('viewer-section');
+
+      document.getElementById('viewer-bank-name').textContent = bankData.name;
+      document.getElementById('viewer-bank-desc').textContent = bankData.description || '';
+      document.getElementById('viewer-q-count').textContent = (bankData.questions || []).length;
+
+      // Author info
+      const initials = ((bankData.first_name || '').slice(0,1) + (bankData.last_name || '').slice(0,1)).toUpperCase() || (bankData.username || '?').slice(0,2).toUpperCase();
+      const avatarEl = document.getElementById('author-avatar');
+      if (bankData.avatar_url) {
+        avatarEl.innerHTML = `<img src="${escHtml(bankData.avatar_url)}" alt="avatar">`;
+      } else {
+        avatarEl.textContent = initials;
+      }
+      const fullName = [bankData.first_name, bankData.last_name].filter(Boolean).join(' ') || bankData.username || '';
+      document.getElementById('author-name').textContent = fullName;
+      document.getElementById('author-username').textContent = bankData.username ? `@${bankData.username}` : '';
+      document.getElementById('author-inst').textContent = bankData.institution || '';
+
+      // Favorite button — only for other teachers on public banks
+      const user = Auth.getUser();
+      if (user && user.role === 'teacher' && bankData.is_public && bankData.teacher_id !== user.id) {
+        show('fav-btn-wrap');
+        // Check if already favorited
+        API.get('/api/banks').then(banks => {
+          const isFav = banks.some(b => b.id === bankData.id && b.is_favorite);
+          const btn = document.getElementById('fav-btn');
+          if (btn) {
+            btn.textContent = isFav ? '💔 Убрать из избранного' : '❤️ В избранное';
+            btn.className   = isFav ? 'btn btn-danger btn-sm' : 'btn btn-secondary btn-sm';
+            btn._isFav = isFav;
+          }
+        }).catch(() => {});
+      }
+
+      // Render questions read-only
+      const list = document.getElementById('viewer-questions-list');
+      const empty = document.getElementById('viewer-empty');
+      const questions = bankData.questions || [];
+
+      if (questions.length === 0) {
+        list.innerHTML = '';
+        show('viewer-empty');
+        return;
+      }
+      hide('viewer-empty');
+      list.innerHTML = questions.map((q, i) => buildQuestionItem(q, i + 1, false)).join('');
+
+      // Collapsible
+      list.querySelectorAll('.bank-question-header').forEach(header => {
+        header.addEventListener('click', () => {
+          const item = header.closest('.bank-question-item');
+          item.classList.toggle('expanded');
+        });
+      });
+    }
+
+    /* ══════════════════════════════════════════════════════
+       IMPORT MODAL
+    ══════════════════════════════════════════════════════ */
+    let importPreviewData = null; // { test, questions }
+
+    async function openImportModal() {
+      // Reset to step 1
+      goToImportStep(1);
+      document.getElementById('import-test-select').innerHTML = '<option value="">— Выберите тест —</option>';
+      showModal('import-modal');
+
+      // Load teacher's tests
+      try {
+        const tests = await API.get('/api/tests');
+        const sel = document.getElementById('import-test-select');
+        if (!tests || tests.length === 0) {
+          sel.innerHTML = '<option value="">— Нет доступных тестов —</option>';
+          return;
+        }
+        sel.innerHTML = '<option value="">— Выберите тест —</option>' +
+          tests.map(t => `<option value="${t.id}">${escHtml(t.title)}</option>`).join('');
+      } catch (err) {
+        showToast(err.message || 'Ошибка загрузки тестов', 'error');
+      }
+    }
+
+    function closeImportModal() { hideModal('import-modal'); }
+
+    function goToImportStep(n) {
+      document.getElementById('import-step-1').classList.toggle('active', n === 1);
+      document.getElementById('import-step-2').classList.toggle('active', n === 2);
+    }
+
+    function backToStep1() {
+      importPreviewData = null;
+      goToImportStep(1);
+    }
+
+    async function loadTestQuestions() {
+      const testId = document.getElementById('import-test-select').value;
+      if (!testId) {
+        showToast('Выберите тест', 'error');
+        return;
+      }
+      try {
+        const data = await API.get(`/api/tests/${testId}/questions-preview`);
+        importPreviewData = data;
+
+        document.getElementById('import-test-title-label').textContent =
+          `Тест: ${data.test?.title || ''}`;
+
+        const listEl = document.getElementById('import-questions-list');
+        if (!data.questions || data.questions.length === 0) {
+          listEl.innerHTML = '<div class="text-gray text-sm" style="padding:12px 0;">В этом тесте нет вопросов.</div>';
+        } else {
+          listEl.innerHTML = data.questions.map((q, i) => `
+            <div class="preview-q-item">
+              <input type="checkbox" id="import-q-${q.id}" class="import-q-cb" data-qid="${q.id}" checked
+                style="accent-color:var(--blue); margin-top:2px; flex-shrink:0;"
+                onchange="updateImportSelectAll()">
+              <label for="import-q-${q.id}">${i + 1}. ${escHtml(q.question_text)}</label>
+            </div>`).join('');
+        }
+
+        document.getElementById('import-select-all').checked = true;
+        goToImportStep(2);
+      } catch (err) {
+        showToast(err.message || 'Ошибка загрузки вопросов', 'error');
+      }
+    }
+
+    function toggleImportSelectAll() {
+      const checked = document.getElementById('import-select-all').checked;
+      document.querySelectorAll('.import-q-cb').forEach(cb => { cb.checked = checked; });
+    }
+
+    function updateImportSelectAll() {
+      const all = Array.from(document.querySelectorAll('.import-q-cb'));
+      document.getElementById('import-select-all').checked = all.length > 0 && all.every(cb => cb.checked);
+    }
+
+    async function doImport() {
+      if (!importPreviewData) return;
+      const testId = importPreviewData.test?.id;
+      const ids = Array.from(document.querySelectorAll('.import-q-cb:checked')).map(cb => Number(cb.dataset.qid));
+      if (ids.length === 0) {
+        showToast('Выберите хотя бы один вопрос', 'error');
+        return;
+      }
+      try {
+        const res = await API.post(`/api/tests/${testId}/export-to-bank`, {
+          bank_id: Number(bankId),
+          question_ids: ids
+        });
+        const added = res.added ?? ids.length;
+        showToast(`Добавлено ${added} вопрос(ов)`, 'success');
+        closeImportModal();
+        await loadBank(); // reload questions
+      } catch (err) {
+        showToast(err.message || 'Ошибка импорта', 'error');
+      }
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       Modal helpers
+    ══════════════════════════════════════════════════════ */
+    function showModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+    function hideModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    // Close on overlay click
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) {
+        e.target.classList.remove('open');
+      }
+    });
+
+    /* ══════════════════════════════════════════════════════
+       Visibility helpers
+    ══════════════════════════════════════════════════════ */
+    function show(id) { document.getElementById(id)?.classList.remove('d-none'); }
+    function hide(id) { document.getElementById(id)?.classList.add('d-none'); }
+
+    function showError(title, msg) {
+      hide('loading-state');
+      hide('bank-content');
+      document.getElementById('error-title').textContent = title;
+      document.getElementById('error-msg').textContent = msg;
+      show('error-state');
+    }
+
+    async function toggleFav() {
+      const btn = document.getElementById('fav-btn');
+      if (!btn) return;
+      const adding = !btn._isFav;
+      btn.disabled = true;
+      try {
+        if (adding) {
+          await API.post(`/api/banks/${bankId}/favorite`);
+          btn.textContent = '💔 Убрать из избранного';
+          btn.className   = 'btn btn-danger btn-sm';
+          btn._isFav = true;
+          showToast('Добавлено в избранное', 'success');
+        } else {
+          await API.delete(`/api/banks/${bankId}/favorite`);
+          btn.textContent = '❤️ В избранное';
+          btn.className   = 'btn btn-secondary btn-sm';
+          btn._isFav = false;
+          showToast('Убрано из избранного', 'success');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

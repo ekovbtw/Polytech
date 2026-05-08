@@ -1,66 +1,385 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PolyTest — Платформа для тестирования</title>
+  <title>PolyMaker — Платформа для интерактивного обучения</title>
+  <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+
+    /* ── Landing navbar ── */
+    .land-nav {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      background: var(--white);
+      border-bottom: 2px solid var(--gray-light);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .land-logo {
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+      text-decoration: none;
+      color: var(--almost-black);
+    }
+    .land-logo span { color: var(--green); }
+    .land-nav-right { display: flex; gap: 10px; align-items: center; }
+
+    /* ── Hero ── */
+    .land-hero {
+      min-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+      background: linear-gradient(160deg, #f0fdf4 0%, #e0f2fe 50%, #ede9fe 100%);
+    }
+    [data-theme="dark"] .land-hero {
+      background: linear-gradient(160deg, #0d1f12 0%, #071235 50%, #1e1b4b 100%);
+    }
+    .land-hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: 20px;
+      padding: 5px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--graphite);
+      margin-bottom: 28px;
+    }
+    .land-hero-title {
+      font-family: var(--font-heading);
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      line-height: 1.1;
+      color: var(--almost-black);
+      margin-bottom: 20px;
+      max-width: 700px;
+    }
+    .land-hero-title .accent-green  { color: var(--green); }
+    .land-hero-title .accent-purple { color: #7c3aed; }
+    [data-theme="dark"] .land-hero-title { color: #f1f5f9; }
+    .land-hero-sub {
+      font-size: 1.1rem;
+      color: var(--graphite);
+      max-width: 540px;
+      line-height: 1.7;
+      margin-bottom: 40px;
+    }
+    .land-hero-btns {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 60px;
+    }
+
+    /* ── Modes section ── */
+    .land-modes {
+      padding: 80px 24px;
+      background: var(--bg);
+    }
+    .land-section-label {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--graphite);
+      margin-bottom: 12px;
+    }
+    .land-section-title {
+      font-family: var(--font-heading);
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      text-align: center;
+      color: var(--almost-black);
+      margin-bottom: 48px;
+    }
+    [data-theme="dark"] .land-section-title { color: #f1f5f9; }
+
+    .land-modes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      max-width: 940px;
+      margin: 0 auto;
+    }
+    @media (max-width: 680px) { .land-modes-grid { grid-template-columns: 1fr; } }
+
+    .land-mode-card {
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: 24px;
+      padding: 44px 36px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .land-mode-card:hover { transform: translateY(-6px); }
+    .land-mode-card.green:hover  { border-color: var(--green);  box-shadow: 0 16px 40px rgba(88,204,2,.14); }
+    .land-mode-card.purple:hover { border-color: #7c3aed; box-shadow: 0 16px 40px rgba(124,58,237,.14); }
+
+    .land-mode-icon { font-size: 3.4rem; line-height: 1; }
+    .land-mode-title {
+      font-family: var(--font-heading);
+      font-size: 1.55rem;
+      color: var(--almost-black);
+    }
+    [data-theme="dark"] .land-mode-title { color: #f1f5f9; }
+    .land-mode-desc {
+      font-size: 14px;
+      color: var(--graphite);
+      line-height: 1.65;
+      flex: 1;
+    }
+    .land-mode-features {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .land-mode-feat {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--graphite);
+    }
+    .land-mode-feat-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+    .land-mode-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+    }
+    .badge-soon { background: #f3e8ff; color: #7c3aed; }
+    .badge-live  { background: #dcfce7; color: #16a34a; }
+
+    /* ── Features strip ── */
+    .land-features {
+      padding: 80px 24px;
+      background: var(--white);
+    }
+    .land-feat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      max-width: 940px;
+      margin: 0 auto;
+    }
+    .land-feat-item {
+      text-align: center;
+      padding: 28px 20px;
+    }
+    .land-feat-item-icon { font-size: 2.4rem; margin-bottom: 12px; }
+    .land-feat-item-title {
+      font-weight: 800;
+      font-size: 15px;
+      color: var(--almost-black);
+      margin-bottom: 6px;
+    }
+    [data-theme="dark"] .land-feat-item-title { color: #f1f5f9; }
+    .land-feat-item-desc { font-size: 13px; color: var(--graphite); line-height: 1.55; }
+
+    /* ── CTA section ── */
+    .land-cta {
+      padding: 100px 24px;
+      text-align: center;
+      background: linear-gradient(145deg, #f0fdf4 0%, #e0f2fe 60%, #ede9fe 100%);
+    }
+    [data-theme="dark"] .land-cta {
+      background: linear-gradient(145deg, #0d1f12 0%, #071235 60%, #1e1b4b 100%);
+    }
+    .land-cta-title {
+      font-family: var(--font-heading);
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      color: var(--almost-black);
+      margin-bottom: 14px;
+    }
+    [data-theme="dark"] .land-cta-title { color: #f1f5f9; }
+    .land-cta-sub {
+      color: var(--graphite);
+      font-size: 15px;
+      margin-bottom: 36px;
+    }
+    .land-cta-btns {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* ── Footer ── */
+    .land-footer {
+      padding: 28px 40px;
+      text-align: center;
+      background: var(--white);
+      border-top: 2px solid var(--gray-light);
+      font-size: 13px;
+      color: var(--graphite);
+    }
+
+    .land-theme-btn {
+      background: none;
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius);
+      width: 38px;
+      height: 38px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color var(--transition);
+    }
+    .land-theme-btn:hover { border-color: var(--blue); }
+  </style>
 </head>
 <body>
-  <header class="navbar"><div id="navbar"></div></header>
 
-  <main>
-    <section class="hero container">
-      <div class="hero-logo" style="display:flex;align-items:center;justify-content:center;gap:16px;">
-        <img src="/images/politech-logo.svg" alt="PolyTest" style="height:64px;width:64px;">
-        <span>Poly<span>Test</span></span>
-      </div>
-      <p>Создавайте тесты, делитесь кодом — студенты проходят мгновенно. Просто, удобно, эффективно.</p>
-      <div class="hero-buttons">
-        <a href="/auth.html?tab=register" class="btn btn-primary btn-lg">Начать бесплатно</a>
-        <a href="/auth.html?tab=login"    class="btn btn-secondary btn-lg">Войти</a>
-      </div>
-    </section>
+  <!-- Navbar -->
+  <nav class="land-nav">
+    <a href="/" class="land-logo">Poly<span>Maker</span></a>
+    <div class="land-nav-right">
+      <button class="land-theme-btn" id="theme-btn" onclick="_toggleTheme()" title="Тема">🌙</button>
+      <a href="/auth.html?tab=login"    class="btn btn-secondary btn-sm">Войти</a>
+      <a href="/auth.html?tab=register" class="btn btn-primary btn-sm">Регистрация</a>
+    </div>
+  </nav>
 
-    <section class="container">
-      <div class="features">
-        <div class="feature-card">
-          <div class="feature-icon">📝</div>
-          <h3>Создавайте тесты</h3>
-          <p>Преподаватели могут составить тест с любым количеством вопросов за несколько минут.</p>
+  <!-- Hero -->
+  <section class="land-hero">
+    <div class="land-hero-badge">✨ Бесплатно для преподавателей и студентов</div>
+    <h1 class="land-hero-title">
+      Интерактивное обучение<br>
+      с <span class="accent-green">тестами</span> и <span class="accent-purple">Kahoot-режимом</span>
+    </h1>
+    <p class="land-hero-sub">
+      PolyMaker — платформа, которая объединяет классическое тестирование и живые викторины
+      в реальном времени. Создавайте, делитесь, анализируйте.
+    </p>
+    <div class="land-hero-btns">
+      <a href="/auth.html?tab=register" class="btn btn-primary btn-lg">Начать бесплатно →</a>
+      <a href="/auth.html?tab=login"    class="btn btn-secondary btn-lg">Войти в аккаунт</a>
+    </div>
+  </section>
+
+  <!-- Modes -->
+  <section class="land-modes">
+    <div class="land-section-label">Два режима работы</div>
+    <h2 class="land-section-title">Выберите формат под задачу</h2>
+
+    <div class="land-modes-grid">
+      <div class="land-mode-card green">
+        <div class="land-mode-icon">📝</div>
+        <div><span class="land-mode-badge badge-live">Доступно</span></div>
+        <div class="land-mode-title">Режим тестов</div>
+        <div class="land-mode-desc">
+          Создавайте тесты с различными типами вопросов, назначайте классам,
+          отслеживайте прогресс каждого студента и анализируйте результаты.
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔑</div>
-          <h3>Уникальный код</h3>
-          <p>Каждому тесту присваивается 6-символьный код. Студенты вводят код — и сразу начинают.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">⚙️</div>
-          <h3>Гибкие настройки</h3>
-          <p>Пароль к тесту, перемешивание вопросов, анонимный режим, показ результатов.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📊</div>
-          <h3>Результаты в реальном времени</h3>
-          <p>Преподаватель видит все попытки с оценками сразу после прохождения.</p>
+        <div class="land-mode-features">
+          <div class="land-mode-feat"><span class="land-mode-feat-icon">🔑</span>Уникальный код для каждого теста</div>
+          <div class="land-mode-feat"><span class="land-mode-feat-icon">📊</span>Детальная аналитика и оценки</div>
+          <div class="land-mode-feat"><span class="land-mode-feat-icon">🏫</span>Классы и управление студентами</div>
+          <div class="land-mode-feat"><span class="land-mode-feat-icon">📚</span>Банк вопросов для повторного использования</div>
+          <div class="land-mode-feat"><span class="land-mode-feat-icon">⏱</span>Дедлайны и ограничение по времени</div>
         </div>
       </div>
-    </section>
 
-    <section class="container text-center" style="padding-bottom: 80px;">
-      <h2 style="font-family: var(--font-heading); color: var(--green); margin-bottom: 12px;">
-        Готовы начать?
-      </h2>
-      <p class="text-gray" style="margin-bottom: 24px;">Регистрация занимает меньше минуты</p>
-      <a href="/auth.html?tab=register" class="btn btn-primary btn-lg">Зарегистрироваться</a>
-    </section>
-  </main>
+      <div class="land-mode-card purple">
+        <div class="land-mode-icon">🎮</div>
+        <div><span class="land-mode-badge badge-soon">Скоро</span></div>
+        <div class="land-mode-title">Kahoot-режим</div>
+        <div class="land-mode-desc">
+          Проводите живые викторины, где все участники отвечают одновременно.
+          Напряжение, таблица лидеров и мгновенные результаты — как в Kahoot,
+          но прямо на вашей платформе.
+        </div>
+        <div class="land-mode-features">
+          <div class="land-mode-feat"><span class="land-mode-feat-icon">⚡</span>Все отвечают в реальном времени</div>
+          <div class="land-mode-feat"><span class="land-mode-feat-icon">🏆</span>Таблица лидеров обновляется live</div>
+          <div class="land-mode-feat"><span class="land-mode-feat-icon">📱</span>Телефон, планшет, ноутбук — без установки</div>
+          <div class="land-mode-feat"><span class="land-mode-feat-icon">🎯</span>Скорость ответа влияет на очки</div>
+          <div class="land-mode-feat"><span class="land-mode-feat-icon">🔗</span>Подключение по пин-коду</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="land-features">
+    <div class="land-section-label">Возможности платформы</div>
+    <h2 class="land-section-title">Всё необходимое в одном месте</h2>
+    <div class="land-feat-grid">
+      <div class="land-feat-item">
+        <div class="land-feat-item-icon">🚀</div>
+        <div class="land-feat-item-title">Быстрый старт</div>
+        <div class="land-feat-item-desc">Регистрация за минуту, первый тест — за пять</div>
+      </div>
+      <div class="land-feat-item">
+        <div class="land-feat-item-icon">🔒</div>
+        <div class="land-feat-item-title">Безопасность</div>
+        <div class="land-feat-item-desc">Пароль к тесту, анонимный режим, приватные классы</div>
+      </div>
+      <div class="land-feat-item">
+        <div class="land-feat-item-icon">🔀</div>
+        <div class="land-feat-item-title">Гибкость</div>
+        <div class="land-feat-item-desc">Перемешивание вопросов, несколько типов заданий</div>
+      </div>
+      <div class="land-feat-item">
+        <div class="land-feat-item-icon">📈</div>
+        <div class="land-feat-item-title">Аналитика</div>
+        <div class="land-feat-item-desc">Результаты в реальном времени, история попыток</div>
+      </div>
+      <div class="land-feat-item">
+        <div class="land-feat-item-icon">🌙</div>
+        <div class="land-feat-item-title">Тёмная тема</div>
+        <div class="land-feat-item-desc">Комфортная работа в любое время суток</div>
+      </div>
+      <div class="land-feat-item">
+        <div class="land-feat-item-icon">🆓</div>
+        <div class="land-feat-item-title">Бесплатно</div>
+        <div class="land-feat-item-desc">Никаких скрытых платежей, без лимитов на тесты</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="land-cta">
+    <h2 class="land-cta-title">Готовы начать?</h2>
+    <p class="land-cta-sub">Регистрация бесплатная и займёт меньше минуты</p>
+    <div class="land-cta-btns">
+      <a href="/auth.html?tab=register" class="btn btn-primary btn-lg">Зарегистрироваться →</a>
+      <a href="/auth.html?tab=login"    class="btn btn-secondary btn-lg">Уже есть аккаунт</a>
+    </div>
+  </section>
+
+  <footer class="land-footer">
+    © 2026 PolyMaker — Платформа для интерактивного обучения
+  </footer>
 
   <script src="/js/common.js"></script>
   <script>
-    renderNavbar();
-    // Redirect if already logged in
-    if (Auth.isLoggedIn()) window.location.href = '/dashboard.html';
+    if (Auth.isLoggedIn()) window.location.href = '/mode-select.html';
+    document.getElementById('theme-btn').textContent =
+      localStorage.getItem('qm_theme') === 'dark' ? '☀️' : '🌙';
   </script>
 </body>
 </html>

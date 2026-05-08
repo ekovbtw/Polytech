@@ -1,0 +1,404 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мои классы — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ── Class card ── */
+    .class-card {
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius-lg);
+      margin-bottom: 16px;
+      overflow: hidden;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .class-card:hover { border-color: var(--blue); box-shadow: 0 2px 12px rgba(28,176,246,0.10); }
+
+    .class-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      gap: 12px;
+      flex-wrap: wrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    .class-card-header:hover { background: #f8fbff; }
+
+    .class-card-info { flex: 1; min-width: 0; }
+    .class-card-name {
+      font-family: var(--font-heading);
+      font-size: 1.2rem;
+      color: var(--almost-black);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .class-card-teacher {
+      font-size: 13px;
+      color: var(--graphite);
+      margin-top: 4px;
+    }
+
+    .class-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .class-chevron {
+      font-size: 18px;
+      color: var(--gray);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    .class-card.open .class-chevron { transform: rotate(180deg); }
+
+    /* ── Tests list inside class card ── */
+    .class-tests {
+      display: none;
+      border-top: 2px solid var(--gray-light);
+      padding: 16px 24px;
+      background: var(--bg);
+    }
+    .class-card.open .class-tests { display: block; }
+
+    .class-test-item {
+      background: var(--white);
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      transition: border-color var(--transition);
+    }
+    .class-test-item:last-child { margin-bottom: 0; }
+    .class-test-item:hover { border-color: var(--green); }
+    .class-test-item.expired { opacity: 0.65; }
+
+    .class-test-title {
+      font-weight: 700;
+      font-size: 15px;
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .class-test-badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .badge-red { background: #ffebee; color: #c62828; }
+
+    /* ── Join card ── */
+    .join-card { margin-bottom: 32px; }
+    .join-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .join-row .form-group { margin-bottom: 0; flex: 1; min-width: 140px; }
+  </style>
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+
+      <div class="dashboard-header">
+        <div>
+          <h1 style="font-family:var(--font-heading); font-size:1.8rem;">🏫 Мои классы</h1>
+          <p class="text-gray mt-8">Классы, в которых вы состоите</p>
+        </div>
+        <a href="/dashboard.html" class="btn btn-secondary btn-sm">← Назад</a>
+      </div>
+
+      <!-- ── Входящие приглашения ── -->
+      <div id="invites-wrap"></div>
+
+      <!-- ── Вступить в класс ── -->
+      <div class="card join-card">
+        <h3 style="font-family:var(--font-heading); margin-bottom:16px;">➕ Вступить в класс</h3>
+        <div class="join-row">
+          <div class="form-group">
+            <label class="form-label">Код класса</label>
+            <input id="join-code" class="form-input" type="text" maxlength="8"
+              placeholder="8-значный код (напр. ABCD1234)"
+              oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Пароль <span class="text-gray" style="font-weight:400; font-size:12px;">(если требуется)</span></label>
+            <div class="password-wrapper">
+              <input id="join-password" class="form-input" type="password" placeholder="Пароль класса">
+              <button type="button" class="password-toggle">👁️</button>
+            </div>
+          </div>
+          <div class="form-group" style="flex:0;">
+            <label class="form-label" style="visibility:hidden;">—</label>
+            <button class="btn btn-primary" onclick="joinClass()" id="join-btn">Вступить</button>
+          </div>
+        </div>
+        <div id="join-alert" class="alert mt-16"></div>
+      </div>
+
+      <!-- ── Список классов ── -->
+      <div id="classes-list">
+        <div class="empty-state">
+          <div class="loading">Загрузка…</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Модал подтверждения выхода из класса -->
+  <div class="modal-overlay" id="leave-modal">
+    <div class="modal">
+      <h3>Покинуть класс?</h3>
+      <p class="text-gray">Вы выйдете из класса и потеряете доступ к его тестам.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeLeaveModal()">Отмена</button>
+        <button class="btn btn-danger" id="confirm-leave-btn" onclick="confirmLeave()">Выйти</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    Auth.requireAuth();
+    renderNavbar();
+
+    let leaveTargetId = null;
+
+    loadInvites();
+    loadClasses();
+
+    /* ── Входящие приглашения ── */
+    async function loadInvites() {
+      const wrap = document.getElementById('invites-wrap');
+      try {
+        const invites = await API.get('/api/class-invites');
+        if (!invites.length) { wrap.innerHTML = ''; return; }
+        wrap.innerHTML = `
+          <div class="card mb-24">
+            <div class="card-header" style="margin-bottom:12px;">
+              <h2 class="card-title">📨 Приглашения в классы <span class="badge badge-green" style="margin-left:6px;">${invites.length}</span></h2>
+            </div>
+            <div id="invites-list">
+              ${invites.map(inv => {
+                const teacher = [inv.teacher_first, inv.teacher_last].filter(Boolean).join(' ') || inv.teacher_username;
+                return `
+                <div class="class-card" id="inv-${inv.id}" style="margin-bottom:10px;">
+                  <div class="class-card-header" style="cursor:default;">
+                    <div class="class-card-info">
+                      <div class="class-card-name">${escHtml(inv.class_name)}</div>
+                      <div class="class-card-teacher">👨‍🏫 ${escHtml(teacher)}</div>
+                    </div>
+                    <div class="class-card-actions">
+                      <span class="badge badge-blue">${escHtml(inv.code)}</span>
+                      <button class="btn btn-primary btn-sm" onclick="acceptInvite(${inv.id})">✅ Принять</button>
+                      <button class="btn btn-secondary btn-sm" onclick="declineInvite(${inv.id})">❌ Отклонить</button>
+                    </div>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+      } catch { wrap.innerHTML = ''; }
+    }
+
+    async function acceptInvite(id) {
+      try {
+        await API.post(`/api/class-invites/${id}/accept`, {});
+        document.getElementById(`inv-${id}`)?.remove();
+        showToast('Вы вступили в класс!', 'success');
+        loadClasses();
+        // скрыть блок если приглашений не осталось
+        if (!document.querySelector('[id^="inv-"]')) document.getElementById('invites-wrap').innerHTML = '';
+      } catch (e) { showToast(e.message, 'error'); }
+    }
+
+    async function declineInvite(id) {
+      try {
+        await API.delete(`/api/class-invites/${id}`);
+        document.getElementById(`inv-${id}`)?.remove();
+        showToast('Приглашение отклонено', 'success');
+        if (!document.querySelector('[id^="inv-"]')) document.getElementById('invites-wrap').innerHTML = '';
+      } catch (e) { showToast(e.message, 'error'); }
+    }
+
+    /* ── Загрузка списка классов ── */
+    async function loadClasses() {
+      const wrap = document.getElementById('classes-list');
+      try {
+        const classes = await API.get('/api/my-classes');
+        if (!classes.length) {
+          wrap.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">🏫</div>
+              <h3>Вы пока не состоите ни в одном классе</h3>
+              <p>Введите код класса выше, чтобы вступить</p>
+            </div>`;
+          return;
+        }
+        wrap.innerHTML = classes.map(cls => renderClassCard(cls)).join('');
+      } catch (err) {
+        wrap.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">😕</div>
+            <h3>Не удалось загрузить классы</h3>
+            <p class="text-gray">${escHtml(err.message)}</p>
+          </div>`;
+      }
+    }
+
+    function renderClassCard(cls) {
+      const testsHtml = cls.tests && cls.tests.length
+        ? cls.tests.map(t => renderTestItem(t)).join('')
+        : `<p class="text-gray text-sm" style="text-align:center; padding:12px 0;">Тестов пока нет</p>`;
+
+      return `
+        <div class="class-card" id="cls-${cls.id}">
+          <div class="class-card-header" onclick="toggleClass(${cls.id})">
+            <div class="class-card-info">
+              <div class="class-card-name">${escHtml(cls.name)}</div>
+              <div class="class-card-teacher">👨‍🏫 ${escHtml(cls.teacher_name)}</div>
+            </div>
+            <div class="class-card-actions">
+              <span class="badge badge-blue" title="Код класса">${escHtml(cls.code)}</span>
+              <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); openLeaveModal(${cls.id})">
+                Выйти
+              </button>
+              <span class="class-chevron">▼</span>
+            </div>
+          </div>
+          <div class="class-tests">
+            <div style="font-weight:700; font-size:13px; color:var(--graphite); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">
+              Тесты класса
+            </div>
+            ${testsHtml}
+          </div>
+        </div>`;
+    }
+
+    function renderTestItem(t) {
+      const now     = new Date();
+      const expired = t.deadline_at && new Date(t.deadline_at) < now;
+      const expiredClass = expired ? ' expired' : '';
+
+      const codeBadge = `<span class="badge badge-green" title="Код теста">${escHtml(t.code)}</span>`;
+      const timeBadge = t.time_limit_minutes
+        ? `<span class="badge badge-blue">⏱ ${t.time_limit_minutes} мин</span>` : '';
+      const deadlineBadge = t.deadline_at
+        ? `<span class="badge ${expired ? 'badge-red' : 'badge-yellow'}">
+             📅 до ${fmtDate(t.deadline_at)}${expired ? ' ⚠' : ''}
+           </span>`
+        : '';
+
+      const btnAttr  = expired ? 'disabled title="Срок сдачи истёк"' : '';
+      const btnHref  = expired ? '#' : `/take-test.html?id=${t.id}&code=${t.code}`;
+      const btnClass = expired ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm';
+
+      return `
+        <div class="class-test-item${expiredClass}">
+          <div class="class-test-title">${escHtml(t.title)}</div>
+          <div class="class-test-badges">
+            ${codeBadge}
+            ${timeBadge}
+            ${deadlineBadge}
+          </div>
+          <a href="${btnHref}" class="${btnClass}" ${btnAttr}
+             style="${expired ? 'pointer-events:none; opacity:0.5;' : ''}">
+            Начать тест →
+          </a>
+        </div>`;
+    }
+
+    /* ── Раскрытие/скрытие карточки класса ── */
+    function toggleClass(id) {
+      const card = document.getElementById(`cls-${id}`);
+      if (card) card.classList.toggle('open');
+    }
+
+    /* ── Вступление в класс ── */
+    async function joinClass() {
+      const code     = document.getElementById('join-code').value.trim().toUpperCase();
+      const password = document.getElementById('join-password').value;
+      const alert    = document.getElementById('join-alert');
+      const btn      = document.getElementById('join-btn');
+      hideAlert(alert);
+
+      if (code.length < 1) { showAlert(alert, 'Введите код класса'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Вступаем…';
+      try {
+        const cls = await API.post('/api/classes/join', { code, password: password || undefined });
+        showAlert(alert, `Вы вступили в класс «${cls.name}»!`, 'success');
+        document.getElementById('join-code').value     = '';
+        document.getElementById('join-password').value = '';
+        loadClasses();
+      } catch (err) {
+        showAlert(alert, err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Вступить';
+      }
+    }
+
+    document.getElementById('join-code').addEventListener('keydown', e => {
+      if (e.key === 'Enter') joinClass();
+    });
+
+    /* ── Выход из класса ── */
+    function openLeaveModal(id) {
+      leaveTargetId = id;
+      document.getElementById('leave-modal').classList.add('open');
+    }
+    function closeLeaveModal() {
+      leaveTargetId = null;
+      document.getElementById('leave-modal').classList.remove('open');
+    }
+    async function confirmLeave() {
+      if (!leaveTargetId) return;
+      const btn = document.getElementById('confirm-leave-btn');
+      btn.disabled = true;
+      try {
+        await API.delete(`/api/classes/${leaveTargetId}/leave`);
+        closeLeaveModal();
+        showToast('Вы вышли из класса', 'success');
+        loadClasses();
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('leave-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeLeaveModal();
+    });
+
+    /* ── Утилиты ── */
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

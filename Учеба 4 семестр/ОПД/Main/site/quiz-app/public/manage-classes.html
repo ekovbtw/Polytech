@@ -1,0 +1,235 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/images/logo.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мои классы — PolyMaker</title>
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar"><div id="navbar"></div></header>
+
+  <main class="page-content">
+    <div class="container">
+
+      <!-- Заголовок страницы -->
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:28px; flex-wrap:wrap;">
+        <a href="/dashboard.html" class="btn btn-secondary btn-sm">← Назад</a>
+        <h1 style="font-family:var(--font-heading); font-size:1.8rem;">Мои классы</h1>
+      </div>
+
+      <!-- Форма создания класса -->
+      <div class="card mb-24">
+        <h3 style="font-family:var(--font-heading); margin-bottom:20px;">Создать класс</h3>
+
+        <div id="create-alert" class="alert"></div>
+
+        <div class="form-group">
+          <label class="form-label" for="class-name">Название класса *</label>
+          <input id="class-name" class="form-input" type="text"
+            placeholder="Например: Группа ИТ-21" maxlength="80">
+        </div>
+
+        <!-- Переключатель пароля -->
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">🔒 Вход по паролю</div>
+            <div class="toggle-desc">Участники должны ввести пароль при вступлении</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-password" onchange="togglePasswordField()">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div id="password-field" class="d-none" style="padding:12px 0 4px;">
+          <div class="password-wrapper">
+            <input id="class-password" class="form-input" type="password" placeholder="Пароль к классу">
+            <button type="button" class="password-toggle">👁️</button>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;">
+          <button class="btn btn-primary" id="create-btn" onclick="createClass()">
+            Создать класс
+          </button>
+        </div>
+      </div>
+
+      <!-- Список классов -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Мои классы</h2>
+        </div>
+        <div id="classes-list">
+          <div class="empty-state">
+            <div class="loading">Загрузка...</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Модал подтверждения удаления -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal">
+      <h3>Удалить класс?</h3>
+      <p class="text-gray">Это действие нельзя отменить. Все участники и связанные данные будут удалены.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">Отмена</button>
+        <button class="btn btn-danger" id="confirm-delete-btn" onclick="confirmDelete()">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    if (!Auth.requireAuth('teacher')) throw new Error('not teacher');
+    renderNavbar();
+    initPasswordToggles();
+
+    let deleteTargetId = null;
+
+    // ── Переключатель поля пароля ──
+    function togglePasswordField() {
+      const show = document.getElementById('toggle-password').checked;
+      document.getElementById('password-field').classList.toggle('d-none', !show);
+    }
+
+    // ── Создать класс ──
+    async function createClass() {
+      const alert = document.getElementById('create-alert');
+      hideAlert(alert);
+
+      const name = document.getElementById('class-name').value.trim();
+      if (!name) {
+        showAlert(alert, 'Введите название класса');
+        return;
+      }
+
+      const usePassword = document.getElementById('toggle-password').checked;
+      const password = usePassword ? document.getElementById('class-password').value : null;
+
+      const btn = document.getElementById('create-btn');
+      btn.disabled = true;
+      btn.textContent = 'Создаём...';
+
+      try {
+        await API.post('/api/classes', { name, password: password || null });
+        showToast('Класс создан!', 'success');
+
+        // Сброс формы
+        document.getElementById('class-name').value = '';
+        document.getElementById('class-password').value = '';
+        document.getElementById('toggle-password').checked = false;
+        togglePasswordField();
+
+        loadClasses();
+      } catch (err) {
+        showAlert(alert, err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Создать класс';
+      }
+    }
+
+    // ── Загрузить список классов ──
+    async function loadClasses() {
+      const wrap = document.getElementById('classes-list');
+      wrap.innerHTML = '<div class="empty-state"><div class="loading">Загрузка...</div></div>';
+
+      try {
+        const classes = await API.get('/api/classes');
+
+        if (!classes.length) {
+          wrap.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">🏫</div>
+              <h3>Классов пока нет</h3>
+              <p>Создайте первый класс с помощью формы выше</p>
+            </div>`;
+          return;
+        }
+
+        wrap.innerHTML = classes.map(cls => `
+          <div class="test-card" id="cls-${cls.id}">
+            <div class="test-card-info" style="flex:1;">
+              <div class="test-card-title" style="font-size:1.15rem; font-weight:700; margin-bottom:8px;">
+                ${escHtml(cls.name)}
+              </div>
+              <div class="test-card-meta" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                <span
+                  class="badge"
+                  style="font-family:monospace; font-size:0.95rem; letter-spacing:2px; cursor:pointer;"
+                  title="Нажмите, чтобы скопировать код"
+                  onclick="copyToClipboard('${escHtml(cls.code)}', 'Код скопирован!')"
+                >${escHtml(cls.code)}</span>
+                <span title="Участников">👥 ${cls.member_count}</span>
+                <span title="Тестов">📋 ${cls.test_count}</span>
+                ${cls.password ? '<span class="badge badge-yellow">🔒 Пароль</span>' : ''}
+                <span class="text-gray">📅 ${fmtDate(cls.created_at)}</span>
+              </div>
+            </div>
+            <div class="test-card-actions">
+              <a href="/class.html?id=${cls.id}" class="btn btn-secondary btn-sm">Управлять →</a>
+              <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${cls.id})" title="Удалить класс">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        wrap.innerHTML = `<div class="empty-state"><p class="text-gray">Не удалось загрузить классы: ${escHtml(err.message)}</p></div>`;
+      }
+    }
+
+    // ── Удаление ──
+    function openDeleteModal(id) {
+      deleteTargetId = id;
+      document.getElementById('delete-modal').classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      deleteTargetId = null;
+      document.getElementById('delete-modal').classList.remove('open');
+    }
+
+    async function confirmDelete() {
+      if (!deleteTargetId) return;
+      const btn = document.getElementById('confirm-delete-btn');
+      btn.disabled = true;
+      try {
+        await API.delete(`/api/classes/${deleteTargetId}`);
+        closeDeleteModal();
+        showToast('Класс удалён', 'success');
+        loadClasses();
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+      }
+    }
+
+    // Закрыть модал при клике на оверлей
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeDeleteModal();
+    });
+
+    // Enter в поле имени класса
+    document.getElementById('class-name').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') createClass();
+    });
+
+    // ── Вспомогательные функции ──
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── Инициализация ──
+    loadClasses();
+  </script>
+</body>
+</html>
