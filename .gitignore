@@ -1,6 +1,11 @@
 .obsidian
+.git-rewrite/
+
+# Telegram Bot — secrets & generated files
 Проекты/Telegram_Bot/.env
 Проекты/Telegram_Bot/config.py
+Проекты/Telegram_Bot/find_model.py
 Проекты/Telegram_Bot/test_*.py
 Проекты/Telegram_Bot/__pycache__/
+Проекты/Telegram_Bot/*.pyc
 Проекты/Telegram_Bot/scheduler.db
