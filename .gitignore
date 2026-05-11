@@ -1,1 +1,4 @@
 .obsidian
+**/.env
+**/config.py
+**/*.env
