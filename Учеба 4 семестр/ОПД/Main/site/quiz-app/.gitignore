@@ -1,0 +1,26 @@
+# Зависимости
+node_modules/
+
+# База данных (не заливаем — Railway создаст свежую)
+quiz.db
+quiz.db-shm
+quiz.db-wal
+
+# Загруженные пользователями файлы
+public/uploads/
+
+# Переменные окружения
+.env
+.env.local
+
+# Системные файлы Windows
+Thumbs.db
+desktop.ini
+
+# Скрипты запуска для Windows (не нужны на сервере)
+start.bat
+start.ps1
+
+# Логи
+*.log
+npm-debug.log*

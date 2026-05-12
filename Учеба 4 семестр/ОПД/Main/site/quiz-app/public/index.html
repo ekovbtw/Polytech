@@ -30,7 +30,7 @@
       text-decoration: none;
       color: var(--almost-black);
     }
-    .land-logo span { color: var(--green); }
+    .land-logo span { color: #7289da; }
     .land-nav-right { display: flex; gap: 10px; align-items: center; }
 
     /* ── Hero ── */
@@ -42,7 +42,7 @@
       justify-content: center;
       text-align: center;
       padding: 80px 24px 60px;
-      background: linear-gradient(160deg, #f0fdf4 0%, #e0f2fe 50%, #ede9fe 100%);
+      background: linear-gradient(160deg, #0f1035 0%, #1a1f6e 50%, #0e1330 100%);
     }
     [data-theme="dark"] .land-hero {
       background: linear-gradient(160deg, #0d1f12 0%, #071235 50%, #1e1b4b 100%);
@@ -51,29 +51,28 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: var(--white);
-      border: 2px solid var(--gray-light);
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
       border-radius: 20px;
       padding: 5px 16px;
       font-size: 13px;
       font-weight: 600;
-      color: var(--graphite);
+      color: #babcd9;
       margin-bottom: 28px;
     }
     .land-hero-title {
       font-family: var(--font-heading);
       font-size: clamp(2.4rem, 6vw, 4rem);
       line-height: 1.1;
-      color: var(--almost-black);
+      color: #ffffff;
       margin-bottom: 20px;
       max-width: 700px;
     }
-    .land-hero-title .accent-green  { color: var(--green); }
-    .land-hero-title .accent-purple { color: #7c3aed; }
-    [data-theme="dark"] .land-hero-title { color: #f1f5f9; }
+    .land-hero-title .accent-green  { color: #7289da; }
+    .land-hero-title .accent-purple { color: #8891f2; }
     .land-hero-sub {
       font-size: 1.1rem;
-      color: var(--graphite);
+      color: #babcd9;
       max-width: 540px;
       line-height: 1.7;
       margin-bottom: 40px;
@@ -129,8 +128,8 @@
       transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
     }
     .land-mode-card:hover { transform: translateY(-6px); }
-    .land-mode-card.green:hover  { border-color: var(--green);  box-shadow: 0 16px 40px rgba(88,204,2,.14); }
-    .land-mode-card.purple:hover { border-color: #7c3aed; box-shadow: 0 16px 40px rgba(124,58,237,.14); }
+    .land-mode-card.green:hover  { border-color: #7289da;  box-shadow: 0 16px 40px rgba(88,101,242,0.18); }
+    .land-mode-card.purple:hover { border-color: #5865f2; box-shadow: 0 16px 40px rgba(88,101,242,0.18); }
 
     .land-mode-icon { font-size: 3.4rem; line-height: 1; }
     .land-mode-title {
@@ -168,8 +167,8 @@
       letter-spacing: .6px;
       text-transform: uppercase;
     }
-    .badge-soon { background: #f3e8ff; color: #7c3aed; }
-    .badge-live  { background: #dcfce7; color: #16a34a; }
+    .badge-soon { background: rgba(88,101,242,0.12); color: #5865f2; }
+    .badge-live  { background: rgba(87,242,135,0.15); color: #57f287; }
 
     /* ── Features strip ── */
     .land-features {
@@ -201,7 +200,7 @@
     .land-cta {
       padding: 100px 24px;
       text-align: center;
-      background: linear-gradient(145deg, #f0fdf4 0%, #e0f2fe 60%, #ede9fe 100%);
+      background: linear-gradient(145deg, #0f1035 0%, #1a1f6e 60%, #0e1330 100%);
     }
     [data-theme="dark"] .land-cta {
       background: linear-gradient(145deg, #0d1f12 0%, #071235 60%, #1e1b4b 100%);
@@ -209,12 +208,11 @@
     .land-cta-title {
       font-family: var(--font-heading);
       font-size: clamp(1.8rem, 4vw, 2.8rem);
-      color: var(--almost-black);
+      color: #ffffff;
       margin-bottom: 14px;
     }
-    [data-theme="dark"] .land-cta-title { color: #f1f5f9; }
     .land-cta-sub {
-      color: var(--graphite);
+      color: #babcd9;
       font-size: 15px;
       margin-bottom: 36px;
     }
@@ -249,6 +247,20 @@
       transition: border-color var(--transition);
     }
     .land-theme-btn:hover { border-color: var(--blue); }
+
+    /* ── Secondary buttons on dark sections ── */
+    .land-hero .btn-secondary,
+    .land-cta .btn-secondary {
+      color: #ffffff;
+      border-color: rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.08);
+    }
+    .land-hero .btn-secondary:hover,
+    .land-cta .btn-secondary:hover {
+      background: rgba(255,255,255,0.18);
+      border-color: rgba(255,255,255,0.6);
+      color: #ffffff;
+    }
   </style>
 </head>
 <body>
@@ -265,7 +277,7 @@
 
   <!-- Hero -->
   <section class="land-hero">
-    <div class="land-hero-badge">✨ Бесплатно для преподавателей и студентов</div>
+    <div class="land-hero-badge">✨ Создано студентами для студентов и преподавателей</div>
     <h1 class="land-hero-title">
       Интерактивное обучение<br>
       с <span class="accent-green">тестами</span> и <span class="accent-purple">Kahoot-режимом</span>
@@ -309,8 +321,7 @@
         <div class="land-mode-title">Kahoot-режим</div>
         <div class="land-mode-desc">
           Проводите живые викторины, где все участники отвечают одновременно.
-          Напряжение, таблица лидеров и мгновенные результаты — как в Kahoot,
-          но прямо на вашей платформе.
+          Напряжение, таблица лидеров и мгновенные результаты — прямо на нашей платформе.
         </div>
         <div class="land-mode-features">
           <div class="land-mode-feat"><span class="land-mode-feat-icon">⚡</span>Все отвечают в реальном времени</div>
@@ -331,7 +342,7 @@
       <div class="land-feat-item">
         <div class="land-feat-item-icon">🚀</div>
         <div class="land-feat-item-title">Быстрый старт</div>
-        <div class="land-feat-item-desc">Регистрация за минуту, первый тест — за пять</div>
+        <div class="land-feat-item-desc">Регистрация не займет много времени</div>
       </div>
       <div class="land-feat-item">
         <div class="land-feat-item-icon">🔒</div>
@@ -346,7 +357,7 @@
       <div class="land-feat-item">
         <div class="land-feat-item-icon">📈</div>
         <div class="land-feat-item-title">Аналитика</div>
-        <div class="land-feat-item-desc">Результаты в реальном времени, история попыток</div>
+        <div class="land-feat-item-desc">Возможность выгрузить результаты в Excel</div>
       </div>
       <div class="land-feat-item">
         <div class="land-feat-item-icon">🌙</div>
@@ -355,8 +366,8 @@
       </div>
       <div class="land-feat-item">
         <div class="land-feat-item-icon">🆓</div>
-        <div class="land-feat-item-title">Бесплатно</div>
-        <div class="land-feat-item-desc">Никаких скрытых платежей, без лимитов на тесты</div>
+        <div class="land-feat-item-title">Доступно</div>
+        <div class="land-feat-item-desc">В любое время суток, для каждого студента и преподавателя</div>
       </div>
     </div>
   </section>
@@ -364,7 +375,7 @@
   <!-- CTA -->
   <section class="land-cta">
     <h2 class="land-cta-title">Готовы начать?</h2>
-    <p class="land-cta-sub">Регистрация бесплатная и займёт меньше минуты</p>
+    <p class="land-cta-sub">Регистрация займет меньше минуты</p>
     <div class="land-cta-btns">
       <a href="/auth.html?tab=register" class="btn btn-primary btn-lg">Зарегистрироваться →</a>
       <a href="/auth.html?tab=login"    class="btn btn-secondary btn-lg">Уже есть аккаунт</a>

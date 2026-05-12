@@ -18,7 +18,11 @@
       "Bash(npx pm2 *)",
       "Bash(Get-Process node *)",
       "Bash(Select-Object Id, CPU, WorkingSet)",
-      "Bash(Format-Table)"
+      "Bash(Format-Table)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git branch *)",
+      "Bash(git push *)"
     ]
   }
 }
