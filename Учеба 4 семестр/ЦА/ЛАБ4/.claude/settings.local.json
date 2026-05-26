@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Recurse \"C:\\\\Users\\\\Илья\\\\Documents\\\\my-obsidian\\\\Учеба 4 семестр\" -Filter \"*.py\")",
+      "Bash(Select-Object FullName)",
+      "Bash(python -c ' *)",
+      "Bash(pip install *)",
+      "PowerShell(pip install pypdf pdfplumber --quiet 2>&1)",
+      "PowerShell(Get-Content \"$env:TEMP\\\\flask_err.txt\" -ErrorAction SilentlyContinue; Get-Content \"$env:TEMP\\\\flask_out.txt\" -ErrorAction SilentlyContinue)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(curl -s \"https://git.dalabs.ru/api/v4/projects/da2026%2F5151001_40001%2Flab_4%2Fekov_i_a_lab_4/pipelines?ref=labprogress&per_page=1\")",
+      "Bash(python -c \"import lab4; print\\('WEBHOOK_URL:', lab4.WEBHOOK_URL\\); print\\('PORT:', lab4.PORT\\)\")",
+      "Bash(curl -sv \"https://1b4e154558117da7-217-217-245-63.serveousercontent.com/health\")",
+      "Bash(winget install *)",
+      "Bash(ping -n 4 127.0.0.1)",
+      "Bash(curl -s http://localhost:4040/api/tunnels)"
+    ]
+  }
+}
