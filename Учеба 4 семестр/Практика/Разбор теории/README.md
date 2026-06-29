@@ -17,3 +17,5 @@ CLSIDFromProgID(L"Word.Application", &clsid);
 // Создать объект
 CoCreateInstance(clsid, ...); 
 ```
+### Создание нужного объекта
+После получения CLID COM вызывает функцию CoCreateInstance(CLID). CoCreateInstance не создает самостоятельно объект, а обращается к COM серверу, который в последствии создает класс с таким CLID. 
