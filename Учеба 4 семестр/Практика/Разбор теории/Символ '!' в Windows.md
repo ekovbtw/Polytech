@@ -1,4 +1,3 @@
-
 В механизме Windows COM символ '!' используется как разделитель между частями составного Moniker. То есть строка: 
 ```
 file://server/share/report.rtf!something
@@ -14,3 +13,4 @@ Item Moniker
 something
 ```
 В итоге получается составной Moniker-object. 
+
