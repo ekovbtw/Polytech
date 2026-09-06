@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <locale.h>
 #include <Windows.h>
-#include <intrin.h>
+//#include <intrin.h>
 #define SUM_MAX (2147483647LL + 99999LL)
 #define SUM_MIN (-2147483648LL - 99999LL)
 #define LL long long
@@ -90,7 +90,7 @@ int main()
 		threads[i] = CreateThread(NULL, 0, worker_thread, (LPVOID)(size_t)i, 0, NULL);
 	}
 
-	start_time = GetTickCount64();
+	start_time = GetTickCount();
 
 
 	ReleaseSemaphore(start_sem, count_threads, NULL);
@@ -234,7 +234,11 @@ DWORD WINAPI worker_thread(LPVOID param)
 
 int number_of_digits(LL task_index) // суть в том чтобы найти позицию первой еденицы справа 
 {
-	unsigned long Index;
-	_BitScanForward64(&Index, (unsigned __int64)task_index);
-	return (int)Index;
+	int c = 0;
+	while ((task_index & 1) == 0)
+	{
+		task_index >>= 1;
+		c++;
+	}
+	return c;
 }
