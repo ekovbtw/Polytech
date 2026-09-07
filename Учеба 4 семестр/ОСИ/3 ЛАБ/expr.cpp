@@ -1,8 +1,9 @@
-#define _CRT_SECURE_NO_WARNINGS
+﻿#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
 #include <locale.h>
 #include <Windows.h>
+//#include <intrin.h>
 #define SUM_MAX (2147483647LL + 99999LL)
 #define SUM_MIN (-2147483648LL - 99999LL)
 #define LL long long
@@ -15,11 +16,12 @@ int N = 0;
 HANDLE start_sem;
 LL result = 0;
 DWORD WINAPI worker_thread(LPVOID param);
-int count_solved = 0;
-int next_task = 0;
+LL count_solved = 0;
+LL next_task = 0;
 DWORD start_time, end_time;
 LL total = 0;
-LL total_combinations(); 
+LL total_combinations();
+int number_of_digits(LL task_index); // функция для номера знака (для кода Грэя)
 
 FILE* open_file_and_scan()
 {
@@ -55,7 +57,7 @@ void result_to_file()
 	}
 	fprintf(file, "%d\n", count_threads);
 	fprintf(file, "%d\n", N);
-	fprintf(file, "%d\n", count_solved);
+	fprintf(file, "%lld\n", count_solved);
 	fclose(file);
 }
 
@@ -76,12 +78,10 @@ int main()
 	fscanf(file, "%lld", &result);
 	fclose(file);
 
-	// [ИСПРАВЛЕНИЕ] total считается ДО создания потоков,
-	// чтобы потоки не увидели total == 0 и не завершились сразу
+	
 	total = total_combinations();
 
-	// [ИСПРАВЛЕНИЕ] Семафор создаётся с начальным значением 0 — все потоки
-	// заблокируются на WaitForSingleObject и не начнут работу до команды main
+	
 	start_sem = CreateSemaphore(NULL, 0, count_threads, NULL);
 	HANDLE* threads = (HANDLE*)malloc(count_threads * sizeof(HANDLE));
 
@@ -90,17 +90,14 @@ int main()
 		threads[i] = CreateThread(NULL, 0, worker_thread, (LPVOID)(size_t)i, 0, NULL);
 	}
 
-	// Замер времени стартует после создания потоков, но до начала вычислений
 	start_time = GetTickCount();
 
-	// [ИСПРАВЛЕНИЕ] Отпускаем все потоки разом — именно здесь начинаются вычисления
+
 	ReleaseSemaphore(start_sem, count_threads, NULL);
 
-	while (1)
+	for (int i = 0; i < count_threads; i++)
 	{
-		DWORD res = WaitForMultipleObjects(count_threads, threads, TRUE, 1000);
-		if (res != WAIT_TIMEOUT)
-			break;
+		WaitForSingleObject(threads[i], INFINITE);
 	}
 
 	end_time = GetTickCount();
@@ -168,7 +165,7 @@ DWORD WINAPI worker_thread(LPVOID param)
 	while (true)
 	{
 		int index;
-		int end_index; 
+		int end_index;
 
 		EnterCriticalSection(&crit_sec);
 		if (next_task >= total)
@@ -184,10 +181,45 @@ DWORD WINAPI worker_thread(LPVOID param)
 		LeaveCriticalSection(&crit_sec);
 
 		int local_solved = 0;
-		for (int i = index; i < end_index; i++)
+		
+		int count_signs = N - 1; // количество знаков
+		int current_digit_array[64] = { 0 }; // массив для хранения текущего знака каждого числа (0 - минус, 1 - плюс)
+		LL summ = start_array[0]; // сумма текущей комбинации, начинаем с первого числа (тк оно всегда положительное)
+		int Grey_code = index ^ (index >> 1); // код Грея для текущего индекса (xor - ^)
+		for (int k = 0; k < count_signs; k++)
 		{
-			if (check_combination((LL)i))
+			int Grey_code_new = Grey_code >> k;
+			Grey_code_new = Grey_code_new & 1; // получение знака
+			current_digit_array[k] = Grey_code_new; // запись текущего знака (для текущего числа) в массив
+			if (Grey_code_new == 1) // обработка знака
+			{
+				summ += start_array[k + 1];
+			}
+			else
+			{
+				summ -= start_array[k + 1];
+			}
+		}
+		if (summ == result)
+		{
+			local_solved++;
+		}
+		for (int i = index + 1; i < end_index;i++)
+		{
+			int k = number_of_digits(i); // получили позицию знака, который изменился
+			current_digit_array[k] = 1 - current_digit_array[k]; // меняем знак на противоположный
+			if (current_digit_array[k] == 1) // обработка знака
+			{
+				summ += 2 * start_array[k + 1]; // прибавляем дважды, тк мы меняем знак с минуса на плюс
+			}
+			else
+			{
+				summ -= 2 * start_array[k + 1]; // вычитаем дважды, тк мы меняем знак с плюса на минус
+			}
+			if (summ == result)
+			{
 				local_solved++;
+			}
 		}
 		if (local_solved > 0)
 		{
@@ -198,4 +230,15 @@ DWORD WINAPI worker_thread(LPVOID param)
 	}
 
 	return 0;
+}
+
+int number_of_digits(LL task_index) // суть в том чтобы найти позицию первой еденицы справа 
+{
+	int c = 0;
+	while ((task_index & 1) == 0)
+	{
+		task_index >>= 1;
+		c++;
+	}
+	return c;
 }
