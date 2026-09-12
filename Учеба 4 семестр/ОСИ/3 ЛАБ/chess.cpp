@@ -217,6 +217,10 @@ int main()
 		start_time = GetTickCount();
 		for (int i = 0; i < count_threads; i++)
 		{
+			ResumeThread(threads[i]);
+		}
+		for (int i = 0; i < count_threads; i++)
+		{
 			WaitForSingleObject(threads[i], INFINITE);
 		}
 		end_time = GetTickCount();
