@@ -1,4 +1,6 @@
+import time
 def nod_bin(a, b):
+    start_time = time.time()
     g = 1
 
     while a % 2 == 0 and b % 2 == 0:
@@ -51,6 +53,8 @@ def nod_bin(a, b):
     x = C
     y = D
 
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time} seconds")
     return d, x, y
 
 

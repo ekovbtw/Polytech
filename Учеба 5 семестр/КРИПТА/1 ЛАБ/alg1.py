@@ -1,4 +1,7 @@
+import time
+
 def nod(a, b):
+    start_time = time.time()
     r0, r1 = a, b
     x0, x1 = 1, 0
     y0, y1 = 0, 1
@@ -22,7 +25,8 @@ def nod(a, b):
         r1 = r0_old % r1
 
         i += 1
-
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time} seconds")
     return r1, x1, y1
 
 
