@@ -255,7 +255,7 @@ void str_str(const char* point)
         {
             ch = (unsigned char)(*point);
         }
-        video[position * 2] = *point;
+        video[position * 2] = ch;
         video[position * 2 + 1] = 0x07;
         position++;
         if (position >= VIDEO_SIZE)
