@@ -9,7 +9,7 @@ start:
     mov ah, 0x0E
 	mov bx, msg_welcome
 	call turn_show_str
-    	call newline
+    call newline
 	mov bx, alphabet
 	call turn_show_str
 	call newline
