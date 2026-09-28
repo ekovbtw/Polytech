@@ -102,3 +102,39 @@ int main(int argc, char* argv[])
 
 ```
 
+В ОС Linux после того как сервер закончил свое соединение, примерно минуту TCP слушает запоздалые пакеты, те пакеты, которые не успели прийти во время. Следовательно, каждый раз перезапуская сервер нужно будет ждать около минуты до полной его остановки. Чтобы этого избежать добавим в main опцию сокета. 
+
+```
+int main(int argc, char* argv[])
+{
+    // работа с аргументами
+	if (!check_args(argc, argv)) // проверка аргументов поданных на вход
+	{
+		return 1;
+	}
+	int port = atoi(argv[1]);
+	    
+	// инициализация сокета
+	int s;
+	struct sockaddr_in addr;
+	init();
+	s = socket(AF_INET, SOCK_STREAM, 0);
+	if (s < 0)
+		return sock_err("socket", s);
+	// обнуление и добавление описания
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port); // Сервер прослушивает порт
+	addr.sin_addr.s_addr = htonl(INADDR_ANY); // Все адреса
+
+	const int enable = 1;
+	if(setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) == -1)
+	{
+	    printf("WARN, SO_REUSEADDR doesn't enable\n");
+	}
+	
+	
+	return 0;
+}
+
+```
