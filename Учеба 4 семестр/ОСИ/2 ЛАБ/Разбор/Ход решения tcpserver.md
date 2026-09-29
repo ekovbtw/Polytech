@@ -201,3 +201,5 @@ if(bind(s, (struct sockaddr*) &addr, sizeof(addr)) < 0)
 		return 1;
 	}
 ```
+
+## Шаг 6
