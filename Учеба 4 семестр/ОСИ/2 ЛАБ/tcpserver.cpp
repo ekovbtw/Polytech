@@ -11,6 +11,25 @@
 #include <fcntl.h>
 #include <poll.h>
 
+#define MAX_CLIENTS 256; // maximalnoe count clients
+int count_clients = 0;
+
+
+typedef struct pollfd // poll func structure
+{ 
+	int fd; /* описатель сокета */ 
+	short events; /* запрошенные события mask byte*/ 
+	short revents; /* возвращенные события */
+	int i;
+} pollfd;
+
+typedef struct client_info // client structure
+{
+	int port; 
+	int id; 
+	int i;
+} client_info;
+
 
 int check_args(int argc, char* argv[]) // проверка аргументов командной строки
 {
@@ -79,6 +98,13 @@ int set_non_block_mode(int s) // установка неблокирующего
     }
     return fcntl(s, F_SETFL, fl | O_NONBLOCK); // добавляем флаг через побитовое или
 }
+
+
+int poll(struct pollfd *ufds, unsigned int nfds, int timeout)
+{
+	
+}
+
 
 int main(int argc, char* argv[])
 {
