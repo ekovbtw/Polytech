@@ -11,22 +11,14 @@
 #include <fcntl.h>
 #include <poll.h>
 
-#define MAX_CLIENTS 256; // maximalnoe count clients
+#define MAX_CLIENTS 256 // maximalnoe count clients
 int count_clients = 0;
 
 
-typedef struct pollfd // poll func structure
-{ 
-	int fd; /* описатель сокета */ 
-	short events; /* запрошенные события mask byte*/ 
-	short revents; /* возвращенные события */
-	int i;
-} pollfd;
-
 typedef struct client_info // client structure
 {
-	int port; 
-	int id; 
+	unsigned int port; 
+	unsigned int ip; 
 	int i;
 } client_info;
 
@@ -100,9 +92,14 @@ int set_non_block_mode(int s) // установка неблокирующего
 }
 
 
-int poll(struct pollfd *ufds, unsigned int nfds, int timeout)
+void close_client(pollfd* pfd_info, client_info* info)
 {
-	
+	s_close(pfd_info->fd); // закрытие сокета
+	pfd_info->fd = -1; // отчистка
+	pfd_info->events = 0;
+	pfd_info->revents = 0;
+	printf("Client disconnected: %u.%u.%u.%u: %d\n", (info->ip >> 24) & 0xff, (info->ip >> 16) & 0xff, (info->ip >> 8) & 0xff, (info->ip) & 0xff, info->port);
+	memset(info, 0, sizeof(client_info)); // отчистка
 }
 
 
@@ -168,5 +165,122 @@ int main(int argc, char* argv[])
 	}
 
 
-	while(1)sleep(100);
+	// poll, настройка
+	struct pollfd pfd[MAX_CLIENTS];
+	for (int i = 0; i<MAX_CLIENTS-1; i++)
+	{
+		pfd[i].fd = -1;
+		pfd[i].events = 0;
+	}
+	pfd[MAX_CLIENTS-1].fd = s;
+	pfd[MAX_CLIENTS-1].events = POLLIN;
+
+
+	client_info array[MAX_CLIENTS];
+
+
+	while (1)
+	{
+		int ev_cnt = poll(pfd, sizeof(pfd) / sizeof(pfd[0]), 1000); // каждую секунду проверка события
+		if (ev_cnt>0)
+		{
+			if (pfd[MAX_CLIENTS-1].revents & POLLIN) // если пришел клиент
+			{
+				socklen_t socklen = sizeof(addr);
+				int socket_client = accept(s, (struct sockaddr*) &addr, &socklen); // берем сокет клиента
+				
+				int status = 1; // сокет хороший
+				if (socket_client == -1)
+				{
+					status = 0; // сокета нет в любом случае
+					if (errno != EAGAIN && errno != EWOULDBLOCK)
+					{
+						sock_err("accept", s);
+					}
+				}
+
+
+				if (status == 1)
+				{
+					// ставим неблокирующий режим у сокета клиента
+					status_set_non_block = set_non_block_mode(socket_client);
+					if (status_set_non_block == -1)
+					{
+						printf("Error set non block mode\n");
+						s_close(socket_client);
+					}
+
+					if (status_set_non_block != -1)
+					{
+						// ищем свободную структуру
+						int k = 0;
+						int free_pfd_status = 0; 
+						while (k<MAX_CLIENTS-1)
+						{
+							if (pfd[k].fd == -1) // нашли
+							{
+								pfd[k].fd = socket_client; // присвоили
+								free_pfd_status = 1;
+								unsigned int ip_socket_client = ntohl(addr.sin_addr.s_addr); //  парсинг айпи от сокета
+								array[k].ip = ip_socket_client;
+							
+								array[k].i = k; // запоминаем номер сокета
+								unsigned int port_socket_client = ntohs(addr.sin_port); //  парсинг port от сокета
+								array[k].port = port_socket_client;
+
+								pfd[k].events = POLLIN; // ставим флаг, чтобы poll искал сокеты, которые вызвали событие чтения 
+
+								printf(" New client connected: %u.%u.%u.%u: %d\n", (array[k].ip >> 24) & 0xff, (array[k].ip >> 16) & 0xff, (array[k].ip >> 8) & 0xff, (array[k].ip) & 0xff, array[k].port);
+								break;
+							}
+							k++;
+						}
+						if(free_pfd_status == 0) // не нашли
+						{
+							s_close(socket_client);
+						}
+					}
+					
+				}
+			}
+			for (int j = 0; j<MAX_CLIENTS-1; j++)
+			{
+				if (pfd[j].fd == -1) continue; // пропускаем если сокет == -1 
+				if (pfd[j].revents == 0) continue; // пропускаем если нет обратных событий
+
+				
+				if (pfd[j].revents > 0) // если есть события
+				{
+					if ((pfd[j].revents & POLLERR) || (pfd[j].revents & POLLHUP) || (pfd[j].revents & POLLNVAL))
+					{
+						close_client(&pfd[j], &array[j]);
+					}
+					else if (pfd[j].revents & POLLIN)
+					{
+						unsigned char buffer[512] = {0};
+					
+						int status = recv(pfd[j].fd, buffer, 512, 0);
+						if (status == 0)
+						{
+							close_client(&pfd[j], &array[j]);
+						}
+						else if (status == -1)
+						{
+							if (errno != EAGAIN && errno != EWOULDBLOCK)
+							{
+								sock_err("recv", pfd[j].fd);
+								close_client(&pfd[j], &array[j]);
+							}
+						}
+						else if (status > 0)
+						{
+							printf("%d bytes from: %u.%u.%u.%u: %d\n", status, (array[j].ip >> 24) & 0xff, (array[j].ip >> 16) & 0xff, (array[j].ip >> 8) & 0xff, (array[j].ip) & 0xff, array[j].port);
+						}
+					}
+				}
+			}
+		}
+		
+		
+	}
 }
