@@ -12,6 +12,7 @@
 #include <poll.h>
 
 #define MAX_CLIENTS 256 // maximalnoe count clients
+#define START_CAPACITY 512 // стартовая емкость для буфера клиента
 int count_clients = 0;
 
 
@@ -20,6 +21,11 @@ typedef struct client_info // client structure
 	unsigned int port; 
 	unsigned int ip; 
 	int i;
+	unsigned char* buffer; // буффер для накопления сообщения
+	int bytes_cnt; // количество байт, которые уже пришли
+	int status; // статус: put - 1, else - 0
+	int capacity;
+
 } client_info;
 
 
@@ -92,14 +98,105 @@ int set_non_block_mode(int s) // установка неблокирующего
 }
 
 
-void close_client(pollfd* pfd_info, client_info* info)
+void close_client(pollfd* pfd_info, client_info* info) // закрытие клиента, если больше не общается
 {
 	s_close(pfd_info->fd); // закрытие сокета
 	pfd_info->fd = -1; // отчистка
 	pfd_info->events = 0;
 	pfd_info->revents = 0;
 	printf("Client disconnected: %u.%u.%u.%u: %d\n", (info->ip >> 24) & 0xff, (info->ip >> 16) & 0xff, (info->ip >> 8) & 0xff, (info->ip) & 0xff, info->port);
+	free(info->buffer);
 	memset(info, 0, sizeof(client_info)); // отчистка
+}
+
+
+int add_buffer_mem (client_info* info)
+{
+	int new_capacity = info->capacity;
+	if (info->capacity == 0)
+	{ 
+		new_capacity = START_CAPACITY;
+	}
+	unsigned char* tmp = (unsigned char*) realloc(info->buffer, new_capacity*2);
+	if (tmp == NULL)
+	{
+		return -1; // памяти нет, старый буфер остался на месте
+	}
+	info->buffer = tmp;
+	info->capacity = new_capacity*2;
+	return 1;
+}
+
+
+int find_len_message (client_info *info)
+{
+	for (int i = 15; i<=info->bytes_cnt-1; i++)
+	{
+		if (info->buffer[i] == '\0') return i+1;
+	}
+	return 0;
+}
+
+
+void parse_message (client_info *info, int len, FILE* f)
+{
+	unsigned int buff; // логика такая же как в клиенте, делаем буферную переменную, преобразовываем из сетевого порядка байт, перезаписываем в нормальную переменную
+	int pointer = 0; 
+	memcpy(&buff, info->buffer+pointer , 4);
+	pointer+=sizeof(unsigned int);
+
+	unsigned int number = ntohl(buff);
+
+	unsigned char day1_buf;
+	unsigned char month1_buf;
+	unsigned short year1_buf;
+	unsigned char day2_buf;
+	unsigned char month2_buf;
+	unsigned short year2_buf;
+	unsigned char hour_buf;
+	unsigned char minute_buf;
+	unsigned char second_buf;
+
+	memcpy(&day1_buf, info->buffer+pointer, 1);
+	pointer+=sizeof(unsigned char);
+	unsigned char day1 = day1_buf;
+	memcpy(&month1_buf, info->buffer+pointer, 1);
+	pointer+=sizeof(unsigned char);
+	unsigned char month1 = month1_buf;
+	memcpy(&year1_buf, info->buffer+pointer, 2);
+	pointer += sizeof(unsigned short);
+	unsigned short year1 = ntohs(year1_buf);
+
+	memcpy(&day2_buf, info->buffer+pointer, 1);
+	pointer+=sizeof(unsigned char);
+	unsigned char day2 = day2_buf;
+	memcpy(&month2_buf, info->buffer+pointer, 1);
+	pointer+=sizeof(unsigned char);
+	unsigned char month2 = month2_buf;
+	memcpy(&year2_buf, info->buffer+pointer, 2);
+	pointer += sizeof(unsigned short);
+	unsigned short year2 = ntohs(year2_buf);
+	
+	memcpy(&hour_buf, info->buffer+pointer, 1);
+	pointer += sizeof(unsigned char);
+	unsigned char hour = hour_buf;
+	memcpy(&minute_buf, info->buffer+pointer, 1);
+	pointer += sizeof(unsigned char);
+	unsigned char minute = minute_buf;
+	memcpy(&second_buf, info->buffer+pointer, 1);
+	pointer += sizeof(unsigned char);
+	unsigned char second = second_buf;
+
+	//message парсить не нужно, достатоно просто вывести буфер с позиции поинтер
+	// запись в файл: IP:порт пробел сообщение (без номера)
+	fprintf(f, "%u.%u.%u.%u:%u %02d.%02d.%04d %02d.%02d.%04d %02d:%02d:%02d %s\n",
+		(info->ip >> 24) & 0xff, (info->ip >> 16) & 0xff, (info->ip >> 8) & 0xff, (info->ip) & 0xff,
+		info->port,
+		day1, month1, year1,
+		day2, month2, year2,
+		hour, minute, second,
+		(char*)(info->buffer + pointer));
+	fflush(f); // сразу на диск, чтобы не потерять при аварийной остановке
 }
 
 
@@ -165,6 +262,16 @@ int main(int argc, char* argv[])
 	}
 
 
+	// открытие файла для записи сообщений (каждый запуск с чистого файла)
+	FILE* f = fopen("msg.txt", "w");
+	if (f == NULL)
+	{
+		printf("Error open msg.txt\n");
+		s_close(s);
+		return 1;
+	}
+
+
 	// poll, настройка
 	struct pollfd pfd[MAX_CLIENTS];
 	for (int i = 0; i<MAX_CLIENTS-1; i++)
@@ -175,8 +282,17 @@ int main(int argc, char* argv[])
 	pfd[MAX_CLIENTS-1].fd = s;
 	pfd[MAX_CLIENTS-1].events = POLLIN;
 
-
+	// настройка массива клиентов 
 	client_info array[MAX_CLIENTS];
+	for (int i = 0; i<MAX_CLIENTS; i++)
+	{
+		array[i].buffer = NULL;
+		array[i].bytes_cnt = 0;
+		array[i].ip = 0;
+		array[i].port = 0;
+		array[i].status = 0;
+		array[i].capacity = 0;
+	}
 
 
 	while (1)
@@ -255,11 +371,19 @@ int main(int argc, char* argv[])
 					{
 						close_client(&pfd[j], &array[j]);
 					}
-					else if (pfd[j].revents & POLLIN)
+					else if (pfd[j].revents & POLLIN) // если чтение
 					{
-						unsigned char buffer[512] = {0};
-					
-						int status = recv(pfd[j].fd, buffer, 512, 0);
+						if (array[j].capacity - array[j].bytes_cnt < START_CAPACITY) // если вместимость текущая меньше 512 
+						{
+							int status = add_buffer_mem (&array[j]); // расширяем буфер
+							if (status == -1)
+							{
+								close_client(&pfd[j], &array[j]);
+								continue; // если неудача выделения памяти 
+							}
+						}
+						
+						int status = recv(pfd[j].fd, array[j].buffer+array[j].bytes_cnt, array[j].capacity - array[j].bytes_cnt, 0);
 						if (status == 0)
 						{
 							close_client(&pfd[j], &array[j]);
@@ -274,6 +398,32 @@ int main(int argc, char* argv[])
 						}
 						else if (status > 0)
 						{
+							array[j].bytes_cnt += status; // прибавляем полученные байты
+							if (array[j].bytes_cnt >= 3 && array[j].status == 0) // если байтов больше 3 и статуса put еще нет
+							{
+								if (array[j].buffer[0] == 'p' && array[j].buffer[1] == 'u' && array[j].buffer[2] == 't') // проверка
+								{
+									array[j].status = 1;
+									memmove(array[j].buffer, array[j].buffer+3, array[j].bytes_cnt-3); // сдвигаем, чтобы очистить от put
+									array[j].bytes_cnt = array[j].bytes_cnt-3;
+									printf("PUT complete\n");
+								}
+								else // иначе отключаем
+								{
+									printf("Unknown command\n");
+									close_client(&pfd[j], &array[j]);
+									continue;
+								}
+							}
+							int status_message; // длина сообщения
+							while (array[j].status == 1  && (status_message = find_len_message(&array[j])) != 0) // пока находятся сообщения и есть put
+							{
+								printf("LEN_MESSAGE = %d\n", status_message); // печать длины
+								parse_message(&array[j], status_message, f);
+								memmove(array[j].buffer, array[j].buffer+status_message, array[j].bytes_cnt-status_message); // сдвиг на длину сообщения
+								array[j].bytes_cnt -= status_message;
+							}
+							printf("Bytes_cnt now = %d\n", array[j].bytes_cnt);
 							printf("%d bytes from: %u.%u.%u.%u: %d\n", status, (array[j].ip >> 24) & 0xff, (array[j].ip >> 16) & 0xff, (array[j].ip >> 8) & 0xff, (array[j].ip) & 0xff, array[j].port);
 						}
 					}
