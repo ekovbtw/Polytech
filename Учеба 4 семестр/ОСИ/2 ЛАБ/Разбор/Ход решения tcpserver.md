@@ -436,3 +436,5 @@ for (int j = 0; j<MAX_CLIENTS-1; j++)
 				}
 			}
 ```
+
+## Шаг 8
