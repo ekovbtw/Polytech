@@ -398,3 +398,41 @@ for (int j = 0; j<MAX_CLIENTS-1; j++)
 
 Дальше добавим в этот цикл обработку POLLIN сокета
 
+```
+for (int j = 0; j<MAX_CLIENTS-1; j++)
+			{
+				if (pfd[j].fd == -1) continue; // пропускаем если сокет == -1 
+				if (pfd[j].revents == 0) continue; // пропускаем если нет обратных событий
+
+				
+				if (pfd[j].revents > 0) // если есть события
+				{
+					if ((pfd[j].revents & POLLERR) || (pfd[j].revents & POLLHUP) || (pfd[j].revents & POLLNVAL)) // если ошибки
+					{
+						close_client(&pfd[j], &array[j]);
+					}
+					else if (pfd[j].revents & POLLIN) // если чтение
+					{
+						unsigned char buffer[512] = {0}; // буфер для сообщения 
+					
+						int status = recv(pfd[j].fd, buffer, 512, 0); // получаем данные
+						if (status == 0) // если статус = закрытое соединение
+						{
+							close_client(&pfd[j], &array[j]);
+						}
+						else if (status == -1) // если ошибка recv
+						{
+							if (errno != EAGAIN && errno != EWOULDBLOCK)
+							{
+								sock_err("recv", pfd[j].fd);
+								close_client(&pfd[j], &array[j]);
+							}
+						}
+						else if (status > 0) // если пришли байты 
+						{
+							printf("%d bytes from: %u.%u.%u.%u: %d\n", status, (array[j].ip >> 24) & 0xff, (array[j].ip >> 16) & 0xff, (array[j].ip >> 8) & 0xff, (array[j].ip) & 0xff, array[j].port);
+						}
+					}
+				}
+			}
+```
