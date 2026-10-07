@@ -190,7 +190,7 @@ if(bind(s, (struct sockaddr*) &addr, sizeof(addr)) < 0)
 
 ## Шаг 5
 После успешной привязки сокет должен начать "прослушивание", для этого должна быть вызвана функция listen. Она переводит сокет в слушающее состояние, 
-**backlog** — размер очереди соединений, например если указано 1 и то сервер одновременно может принять только одно соединение, все другие попытки подключения клиентов к серверу будут отменены. Это относится только к клиентам, желающим подключиться к серверу в настоящий момент, но не относится к уже подключившимся клиентам.
+**backlog** — размер очереди соединений, например если указано 1, то сервер одновременно может принять только одно соединение, все другие попытки подключения клиентов к серверу будут отменены. Это относится только к клиентам, желающим подключиться к серверу в настоящий момент, но не относится к уже подключившимся клиентам.
 
 ```
 // Начало прослушивания
@@ -229,3 +229,172 @@ short revents; /* возвращенные события */
 Функция poll определена следующим образом: 
 `int poll(struct pollfd *ufds, unsigned int nfds, int timeout);`
 параметр ufds — массив структур (по одному экземпляру на сокет), nfds — количество элементов в массиве ufds, timeout — время ожидания событий на всех переданных сокетах (в миллисекундах).
+
+Сначала добавим следующее:
+
+```
+#define MAX_CLIENTS 256 // maximalnoe count clients
+int count_clients = 0;
+
+
+typedef struct client_info // client structure
+{
+	unsigned int port; 
+	unsigned int ip; 
+	int i;
+} client_info;
+
+```
+Это нужно для сохранения IP, port каждого полученного клиента. 
+
+Затем настроим (обнулим) структуру poll и client_info (в main после listen): 
+
+```
+// poll, настройка
+	struct pollfd pfd[MAX_CLIENTS];
+	for (int i = 0; i<MAX_CLIENTS-1; i++)
+	{
+		pfd[i].fd = -1;
+		pfd[i].events = 0;
+	}
+	pfd[MAX_CLIENTS-1].fd = s; // последний элемент - прослушивающий сокет
+	pfd[MAX_CLIENTS-1].events = POLLIN; // ожидаем сигнала "можно считывать данные"
+
+
+	client_info array[MAX_CLIENTS];
+```
+
+Добавим цикл, который будет искать активные сокеты через poll: 
+
+```
+while (1)
+	{
+		int ev_cnt = poll(pfd, sizeof(pfd) / sizeof(pfd[0]), 1000); // каждую секунду проверка события
+		if (ev_cnt>0)
+		{
+			if (pfd[MAX_CLIENTS-1].revents & POLLIN) // если пришел клиент
+			{
+				socklen_t socklen = sizeof(addr);
+				int socket_client = accept(s, (struct sockaddr*) &addr, &socklen); // берем сокет клиента
+				
+				int status = 1; // сокет хороший
+				if (socket_client == -1)
+				{
+					status = 0; // сокета нет в любом случае
+					if (errno != EAGAIN && errno != EWOULDBLOCK)
+					{
+						sock_err("accept", s);
+					}
+				}
+
+
+				if (status == 1)
+				{
+					// ставим неблокирующий режим у сокета клиента
+					status_set_non_block = set_non_block_mode(socket_client);
+					if (status_set_non_block == -1)
+					{
+						printf("Error set non block mode\n");
+						s_close(socket_client);
+					}
+
+					if (status_set_non_block != -1)
+					{
+						// ищем свободную структуру
+						int k = 0;
+						int free_pfd_status = 0; 
+						while (k<MAX_CLIENTS-1)
+						{
+							if (pfd[k].fd == -1) // нашли
+							{
+								pfd[k].fd = socket_client; // присвоили
+								free_pfd_status = 1;
+								unsigned int ip_socket_client = ntohl(addr.sin_addr.s_addr); //  парсинг айпи от сокета
+								array[k].ip = ip_socket_client;
+							
+								array[k].i = k; // запоминаем номер сокета
+								unsigned int port_socket_client = ntohs(addr.sin_port); //  парсинг port от сокета
+								array[k].port = port_socket_client;
+
+								printf(" New client connected: %u.%u.%u.%u: %d\n", (array[k].ip >> 24) & 0xff, (array[k].ip >> 16) & 0xff, (array[k].ip >> 8) & 0xff, (array[k].ip) & 0xff, array[k].port);
+								break;
+							}
+							k++;
+						}
+						if(free_pfd_status == 0) // не нашли
+						{
+							s_close(socket_client);
+						}
+					}
+					
+				}
+			}
+		}
+		
+		
+	}
+```
+
+## Шаг 7
+В этом шаге необходимо сделать отключение клиента от сервера, если клиент больше ничего не сообщает. Нужно закрыть сокет и освободить слот, чтобы можно было записать новый сокет. 
+Сначала определим, что сокет, который завершил свою отправку данных подает сигнал, а значит для сервера это выглядит как событие чтения (POLLIN). Если после этого события вызвать recv, то recv вернет 0 - что означает завершение. 
+Поставим каждому сокету в поле events флаг POLLIN, чтобы poll следил за включениями этого флага у сокетов (в цикле while) . 
+
+```
+if (pfd[k].fd == -1) // нашли
+							{
+								pfd[k].fd = socket_client; // присвоили
+								free_pfd_status = 1;
+								unsigned int ip_socket_client = ntohl(addr.sin_addr.s_addr); //  парсинг айпи от сокета
+								array[k].ip = ip_socket_client;
+							
+								array[k].i = k; // запоминаем номер сокета
+								unsigned int port_socket_client = ntohs(addr.sin_port); //  парсинг port от сокета
+								array[k].port = port_socket_client;
+
+								pfd[k].events = POLLIN; // ставим флаг, чтобы poll искал сокеты, которые вызвали событие чтения 
+
+								printf(" New client connected: %u.%u.%u.%u: %d\n", (array[k].ip >> 24) & 0xff, (array[k].ip >> 16) & 0xff, (array[k].ip >> 8) & 0xff, (array[k].ip) & 0xff, array[k].port);
+								break;
+							}
+```
+
+Теперь напишем функцию закрытия сокета и очищения структуры pollfd и client_info по индексу. 
+
+```
+void close_client(pollfd* pfd_info, client_info* info)
+{
+	s_close(pfd_info->fd);
+	pfd_info->fd = -1;
+	pfd_info->events = 0;
+	pfd_info->revents = 0;
+	printf("Client disconnected: %u.%u.%u.%u: %d\n", (info->ip >> 24) & 0xff, (info->ip >> 16) & 0xff, (info->ip >> 8) & 0xff, (info->ip) & 0xff, info->port);
+	memset(info, 0, sizeof(client_info));
+}
+
+```
+ 
+ Начнем писать цикл, в котором будут обрабатываться revents, сначала напишем для ошибок (пишем в блоке ev_cnt > 0, но после обработки слушающего сокета):
+
+```
+for (int j = 0; j<MAX_CLIENTS-1; j++)
+			{
+				if (pfd[j].fd == -1) continue;
+				if (pfd[j].revents == 0) continue;
+
+
+				if (pfd[j].revents > 0)
+				{
+					if ((pfd[j].revents & POLLERR) || (pfd[j].revents & POLLHUP) || (pfd[j].revents & POLLNVAL))
+					{
+						close_client(&pfd[j], &array[j]);
+					}
+				}
+			}
+```
+- **POLLERR:** на сокете ошибка (например, клиент упал и соединение сброшено).
+- **POLLHUP:** соединение закрыто.
+- **POLLNVAL:** дескриптор недействителен. Обычно означает ошибку в твоём коде: сокет закрыт, а в pfd остался его номер.
+
+Дальше добавим в этот цикл обработку POLLIN сокета
+
