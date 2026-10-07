@@ -559,3 +559,115 @@ for (int j = 0; j<MAX_CLIENTS-1; j++)
 			}
 ```
 
+## Шаг 9
+В этом шаге нужно разобрать сообщение из буфера. 
+Напоминание: 
+
+![[Pasted image 20261007184509.png]]
+
+Конец сообщения будем определять по нулевому байту, если в буфере меньше 15 байт, значит сообщение не дошло и нужно ждать. Если нашли нулевой знак на позиции point, то длина сообщения point+1 (так как отсчет с нуля байт). 
+Добавим функцию поиска длины сообщения в buffer 
+
+```
+int find_len_message (client_info *info)
+{
+	for (int i = 15; i<=info->bytes_cnt-1; i++) // начинаем с 15 байт (тк заголовок не считаем, ищем 0)
+	{
+		if (info->buffer[i] == '\0') return i+1;
+	}
+	return 0;
+}
+```
+
+Добавим вызов функции в блок status>0 после recv 
+
+```
+else if (status > 0)
+						{
+							array[j].bytes_cnt += status; // прибавляем полученные байты
+							if (array[j].bytes_cnt >= 3 && array[j].status == 0) // если байтов больше 3 и статуса put еще нет
+							{
+								if (array[j].buffer[0] == 'p' && array[j].buffer[1] == 'u' && array[j].buffer[2] == 't') // проверка
+								{
+									array[j].status = 1;
+									memmove(array[j].buffer, array[j].buffer+3, array[j].bytes_cnt-3); // сдвигаем, чтобы очистить от put
+									array[j].bytes_cnt = array[j].bytes_cnt-3;
+									printf("PUT complete\n");
+								}
+								else // иначе отключаем
+								{
+									printf("Unknown command\n");
+									close_client(&pfd[j], &array[j]);
+									continue;
+								}
+							}
+							int status_message; // длина сообщения
+							while (array[j].status == 1  && (status_message = find_len_message(&array[j])) != 0) // пока находятся сообщения и есть put
+							{
+								printf("LEN_MESSAGE = %d\n", status_message); // печать длины
+								memmove(array[j].buffer, array[j].buffer+status_message, array[j].bytes_cnt-status_message); // сдвиг на длину сообщения
+								array[j].bytes_cnt -= status_message;
+							}
+							printf("Bytes_cnt now = %d\n", array[j].bytes_cnt);
+							printf("%d bytes from: %u.%u.%u.%u: %d\n", status, (array[j].ip >> 24) & 0xff, (array[j].ip >> 16) & 0xff, (array[j].ip >> 8) & 0xff, (array[j].ip) & 0xff, array[j].port);
+						}
+```
+
+Напишем функцию, которая будет парсить сообщение переданное клиентом: 
+
+```
+void parse_message (client_info *info, int len)
+{
+	unsigned int buff; // логика такая же как в клиенте, делаем буферную переменную, преобразовываем из сетевого порядка байт, перезаписываем в нормальную переменную
+	int pointer = 0; 
+	memcpy(&buff, info->buffer+pointer , 4);
+	pointer+=sizeof(unsigned int);
+
+	unsigned int number = ntohl(buff);
+
+	unsigned char day1_buf;
+	unsigned char month1_buf;
+	unsigned short year1_buf;
+	unsigned char day2_buf;
+	unsigned char month2_buf;
+	unsigned short year2_buf;
+	unsigned char hour_buf;
+	unsigned char minute_buf;
+	unsigned char second_buf;
+
+	memcpy(&day1_buf, info->buffer+pointer, 1);
+	pointer+=sizeof(unsigned char);
+	unsigned char day1 = day1_buf;
+	memcpy(&month1_buf, info->buffer+pointer, 1);
+	pointer+=sizeof(unsigned char);
+	unsigned char month1 = month1_buf;
+	memcpy(&year1_buf, info->buffer+pointer, 2);
+	pointer += sizeof(unsigned short);
+	unsigned short year1 = ntohs(year1_buf);
+
+	memcpy(&day2_buf, info->buffer+pointer, 1);
+	pointer+=sizeof(unsigned char);
+	unsigned char day2 = day2_buf;
+	memcpy(&month2_buf, info->buffer+pointer, 1);
+	pointer+=sizeof(unsigned char);
+	unsigned char month2 = month2_buf;
+	memcpy(&year2_buf, info->buffer+pointer, 2);
+	pointer += sizeof(unsigned short);
+	unsigned short year2 = ntohs(year2_buf);
+	
+	memcpy(&hour_buf, info->buffer+pointer, 1);
+	pointer += sizeof(unsigned char);
+	unsigned char hour = hour_buf;
+	memcpy(&minute_buf, info->buffer+pointer, 1);
+	pointer += sizeof(unsigned char);
+	unsigned char minute = minute_buf;
+	memcpy(&second_buf, info->buffer+pointer, 1);
+	pointer += sizeof(unsigned char);
+	unsigned char second = second_buf;
+
+	//message парсить не нужно, достатоно просто вывести буфер с позиции поинтер
+	printf("#%u: %02d.%02d.%04d %02d.%02d.%04d %02d:%02d:%02d %s\n",number, day1, month1, year1, day2, month2, year2, hour, minute, second, (char*)(info->buffer + pointer));
+	
+}
+```
+
