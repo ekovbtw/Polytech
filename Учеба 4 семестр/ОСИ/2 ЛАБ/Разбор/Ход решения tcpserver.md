@@ -438,3 +438,18 @@ for (int j = 0; j<MAX_CLIENTS-1; j++)
 ```
 
 ## Шаг 8
+В этом шаге будем создавать буфер сообщения, которое передает клиент серверу. Для начала добавим в описание структуры client_info сам буфер и остальные переменные
+
+```
+typedef struct client_info // client structure
+{
+	unsigned int port; 
+	unsigned int ip; 
+	int i;
+	unsigned char* buffer; // буффер для накопления сообщения
+	int bytes_cnt; // количество байт, которые уже пришли
+	int status; // статус: put - 1, else - 0
+	int capacity; 
+
+} client_info;
+```
