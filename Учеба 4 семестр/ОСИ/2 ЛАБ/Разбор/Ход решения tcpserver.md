@@ -453,3 +453,109 @@ typedef struct client_info // client structure
 
 } client_info;
 ```
+
+Дальше обозначим `#define START_CAPACITY 512 // стартовая емкость для буфера клиента`
+
+Дальше дополним функцию закрытия клиента, добавим очищение массива buffer до memset
+
+```
+void close_client(pollfd* pfd_info, client_info* info) // закрытие клиента, если больше не общается
+{
+	s_close(pfd_info->fd); // закрытие сокета
+	pfd_info->fd = -1; // отчистка
+	pfd_info->events = 0;
+	pfd_info->revents = 0;
+	printf("Client disconnected: %u.%u.%u.%u: %d\n", (info->ip >> 24) & 0xff, (info->ip >> 16) & 0xff, (info->ip >> 8) & 0xff, (info->ip) & 0xff, info->port);
+	free(info->buffer);
+	memset(info, 0, sizeof(client_info)); // отчистка
+}
+```
+
+Написал новую функцию для добавления памяти в buffer при нехватке. Каждый проход при нехватке памяти удваивает на 2.
+
+```
+int add_buffer_mem (client_info* info)
+{
+	int new_capacity = info->capacity;
+	if (info->capacity == 0)
+	{ 
+		new_capacity = START_CAPACITY;
+	}
+	unsigned char* tmp = (unsigned char*) realloc(info->buffer, new_capacity*2);
+	if (tmp == NULL)
+	{
+		return -1; // памяти нет, старый буфер остался на месте
+	}
+	info->buffer = tmp;
+	info->capacity = new_capacity*2;
+	return 1;
+}
+```
+
+Обновим цикл проверки флагов, добавим буфер и проверку на put: 
+
+```
+for (int j = 0; j<MAX_CLIENTS-1; j++)
+			{
+				if (pfd[j].fd == -1) continue; // пропускаем если сокет == -1 
+				if (pfd[j].revents == 0) continue; // пропускаем если нет обратных событий
+
+				
+				if (pfd[j].revents > 0) // если есть события
+				{
+					if ((pfd[j].revents & POLLERR) || (pfd[j].revents & POLLHUP) || (pfd[j].revents & POLLNVAL))
+					{
+						close_client(&pfd[j], &array[j]);
+					}
+					else if (pfd[j].revents & POLLIN) // если чтение
+					{
+						if (array[j].capacity - array[j].bytes_cnt < START_CAPACITY) // если вместимость текущая меньше 512 
+						{
+							int status = add_buffer_mem (&array[j]); // расширяем буфер
+							if (status == -1)
+							{
+								close_client(&pfd[j], &array[j]);
+								continue; // если неудача выделения памяти 
+							}
+						}
+						
+						int status = recv(pfd[j].fd, array[j].buffer+array[j].bytes_cnt, array[j].capacity - array[j].bytes_cnt, 0);
+						if (status == 0)
+						{
+							close_client(&pfd[j], &array[j]);
+						}
+						else if (status == -1)
+						{
+							if (errno != EAGAIN && errno != EWOULDBLOCK)
+							{
+								sock_err("recv", pfd[j].fd);
+								close_client(&pfd[j], &array[j]);
+							}
+						}
+						else if (status > 0)
+						{
+							array[j].bytes_cnt += status; // прибавляем полученные байты
+							if (array[j].bytes_cnt >= 3 && array[j].status == 0) // если байтов больше 3 и статуса put еще нет
+							{
+								if (array[j].buffer[0] == 'p' && array[j].buffer[1] == 'u' && array[j].buffer[2] == 't') // проверка
+								{
+									array[j].status = 1;
+									memmove(array[j].buffer, array[j].buffer+3, array[j].bytes_cnt-3); // сдвигаем, чтобы очистить от put
+									array[j].bytes_cnt = array[j].bytes_cnt-3;
+									printf("PUT complete\n");
+								}
+								else // иначе отключаем
+								{
+									printf("Unknown command\n");
+									close_client(&pfd[j], &array[j]);
+									continue;
+								}
+							}
+							printf("Bytes_cnt now = %d\n", array[j].bytes_cnt);
+							printf("%d bytes from: %u.%u.%u.%u: %d\n", status, (array[j].ip >> 24) & 0xff, (array[j].ip >> 16) & 0xff, (array[j].ip >> 8) & 0xff, (array[j].ip) & 0xff, array[j].port);
+						}
+					}
+				}
+			}
+```
+
