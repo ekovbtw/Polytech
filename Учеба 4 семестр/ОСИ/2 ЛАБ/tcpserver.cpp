@@ -13,6 +13,7 @@
 
 #define MAX_CLIENTS 256 // maximalnoe count clients
 #define START_CAPACITY 512 // стартовая емкость для буфера клиента
+#define OK_BUF_SIZE 512 // размер заготовки "okok..." (должен быть чётным)
 int count_clients = 0;
 
 
@@ -25,6 +26,8 @@ typedef struct client_info // client structure
 	int bytes_cnt; // количество байт, которые уже пришли
 	int status; // статус: put - 1, else - 0
 	int capacity;
+	int send_bytes; // сколько байт ok ещё нужно отправить клиенту
+	int stop; // 1 - клиент прислал stop, после отправки ok сервер завершается
 
 } client_info;
 
@@ -101,12 +104,58 @@ int set_non_block_mode(int s) // установка неблокирующего
 void close_client(pollfd* pfd_info, client_info* info) // закрытие клиента, если больше не общается
 {
 	s_close(pfd_info->fd); // закрытие сокета
-	pfd_info->fd = -1; // отчистка
+	pfd_info->fd = -1; // очистка
 	pfd_info->events = 0;
 	pfd_info->revents = 0;
 	printf("Client disconnected: %u.%u.%u.%u: %d\n", (info->ip >> 24) & 0xff, (info->ip >> 16) & 0xff, (info->ip >> 8) & 0xff, (info->ip) & 0xff, info->port);
 	free(info->buffer);
-	memset(info, 0, sizeof(client_info)); // отчистка
+	memset(info, 0, sizeof(client_info)); // очистка
+}
+
+
+// отправка накопленных ok клиенту
+// возвращает 0 - всё хорошо (даже если часть осталась на потом), -1 - ошибка, клиента надо отключить
+int send_ok(pollfd* pfd_info, client_info* info)
+{
+	char ok_buf[OK_BUF_SIZE]; // заготовка "okokok..."
+	for (int i = 0; i < OK_BUF_SIZE; i += 2)
+	{
+		ok_buf[i] = 'o';
+		ok_buf[i+1] = 'k';
+	}
+
+	while (info->send_bytes > 0)
+	{
+		int start = info->send_bytes % 2; // осталось нечётное число байт - значит следующий 'k' (позиция 1)
+		int len = info->send_bytes;
+		if (len > OK_BUF_SIZE - start)
+		{
+			len = OK_BUF_SIZE - start; // не больше, чем есть в заготовке
+		}
+
+		int sent = send(pfd_info->fd, ok_buf + start, len, MSG_NOSIGNAL);
+		if (sent == -1)
+		{
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+			{
+				break; // буфер отправки полон, остаток дошлём по POLLOUT
+			}
+			sock_err("send", pfd_info->fd);
+			return -1;
+		}
+		info->send_bytes -= sent;
+	}
+
+	// POLLOUT нужен только пока есть что досылать, иначе poll будет срабатывать постоянно
+	if (info->send_bytes > 0)
+	{
+		pfd_info->events = POLLIN | POLLOUT;
+	}
+	else
+	{
+		pfd_info->events = POLLIN;
+	}
+	return 0;
 }
 
 
@@ -138,7 +187,9 @@ int find_len_message (client_info *info)
 }
 
 
-void parse_message (client_info *info, int len, FILE* f)
+// разбор сообщения из начала буфера и запись в файл
+// возвращает 1, если текст сообщения "stop", иначе 0
+int parse_message (client_info *info, int len, FILE* f)
 {
 	unsigned int buff; // логика такая же как в клиенте, делаем буферную переменную, преобразовываем из сетевого порядка байт, перезаписываем в нормальную переменную
 	int pointer = 0; 
@@ -146,6 +197,7 @@ void parse_message (client_info *info, int len, FILE* f)
 	pointer+=sizeof(unsigned int);
 
 	unsigned int number = ntohl(buff);
+	(void)number; // номер в файл не пишется, переменная оставлена для отладки
 
 	unsigned char day1_buf;
 	unsigned char month1_buf;
@@ -197,6 +249,13 @@ void parse_message (client_info *info, int len, FILE* f)
 		hour, minute, second,
 		(char*)(info->buffer + pointer));
 	fflush(f); // сразу на диск, чтобы не потерять при аварийной остановке
+
+	// проверка служебного слова stop (текст ровно "stop")
+	if (strcmp((char*)(info->buffer + pointer), "stop") == 0)
+	{
+		return 1;
+	}
+	return 0;
 }
 
 
@@ -292,10 +351,14 @@ int main(int argc, char* argv[])
 		array[i].port = 0;
 		array[i].status = 0;
 		array[i].capacity = 0;
+		array[i].send_bytes = 0;
+		array[i].stop = 0;
 	}
 
 
-	while (1)
+	int server_running = 1; // 0 - пришёл stop, выходим из главного цикла
+
+	while (server_running == 1)
 	{
 		int ev_cnt = poll(pfd, sizeof(pfd) / sizeof(pfd[0]), 1000); // каждую секунду проверка события
 		if (ev_cnt>0)
@@ -340,7 +403,7 @@ int main(int argc, char* argv[])
 								unsigned int ip_socket_client = ntohl(addr.sin_addr.s_addr); //  парсинг айпи от сокета
 								array[k].ip = ip_socket_client;
 							
-								array[k].i = k; // запоминаем номер сокета
+								array[k].i = k; // запоминаем номер слота
 								unsigned int port_socket_client = ntohs(addr.sin_port); //  парсинг port от сокета
 								array[k].port = port_socket_client;
 
@@ -353,6 +416,7 @@ int main(int argc, char* argv[])
 						}
 						if(free_pfd_status == 0) // не нашли
 						{
+							printf("Too many clients\n");
 							s_close(socket_client);
 						}
 					}
@@ -370,10 +434,12 @@ int main(int argc, char* argv[])
 					if ((pfd[j].revents & POLLERR) || (pfd[j].revents & POLLHUP) || (pfd[j].revents & POLLNVAL))
 					{
 						close_client(&pfd[j], &array[j]);
+						continue;
 					}
-					else if (pfd[j].revents & POLLIN) // если чтение
+
+					if (pfd[j].revents & POLLIN) // если чтение
 					{
-						if (array[j].capacity - array[j].bytes_cnt < START_CAPACITY) // если вместимость текущая меньше 512 
+						if (array[j].capacity - array[j].bytes_cnt < START_CAPACITY) // если свободного места меньше 512 
 						{
 							int status = add_buffer_mem (&array[j]); // расширяем буфер
 							if (status == -1)
@@ -387,6 +453,7 @@ int main(int argc, char* argv[])
 						if (status == 0)
 						{
 							close_client(&pfd[j], &array[j]);
+							continue;
 						}
 						else if (status == -1)
 						{
@@ -394,6 +461,7 @@ int main(int argc, char* argv[])
 							{
 								sock_err("recv", pfd[j].fd);
 								close_client(&pfd[j], &array[j]);
+								continue;
 							}
 						}
 						else if (status > 0)
@@ -415,17 +483,57 @@ int main(int argc, char* argv[])
 									continue;
 								}
 							}
+
 							int status_message; // длина сообщения
-							while (array[j].status == 1  && (status_message = find_len_message(&array[j])) != 0) // пока находятся сообщения и есть put
+							// пока есть put, не было stop и находятся полные сообщения
+							while (array[j].status == 1 && array[j].stop == 0 && (status_message = find_len_message(&array[j])) != 0)
 							{
 								printf("LEN_MESSAGE = %d\n", status_message); // печать длины
-								parse_message(&array[j], status_message, f);
+								int is_stop = parse_message(&array[j], status_message, f);
+
+								array[j].send_bytes += 2; // на каждое сообщение должны клиенту "ok"
+
 								memmove(array[j].buffer, array[j].buffer+status_message, array[j].bytes_cnt-status_message); // сдвиг на длину сообщения
 								array[j].bytes_cnt -= status_message;
+
+								if (is_stop == 1)
+								{
+									printf("STOP received\n");
+									array[j].stop = 1; // дальше сообщения от клиента не разбираем
+									break;
+								}
 							}
+
+							// отправляем все накопленные ok одним разом
+							if (array[j].send_bytes > 0)
+							{
+								if (send_ok(&pfd[j], &array[j]) == -1)
+								{
+									close_client(&pfd[j], &array[j]);
+									continue;
+								}
+							}
+
 							printf("Bytes_cnt now = %d\n", array[j].bytes_cnt);
 							printf("%d bytes from: %u.%u.%u.%u: %d\n", status, (array[j].ip >> 24) & 0xff, (array[j].ip >> 16) & 0xff, (array[j].ip >> 8) & 0xff, (array[j].ip) & 0xff, array[j].port);
 						}
+					}
+
+					// досылка ok, если сокет снова готов к записи (может прийти вместе с POLLIN, поэтому отдельный if)
+					if (pfd[j].revents & POLLOUT)
+					{
+						if (send_ok(&pfd[j], &array[j]) == -1)
+						{
+							close_client(&pfd[j], &array[j]);
+							continue;
+						}
+					}
+
+					// stop: ok этому клиенту полностью отправлен - завершаем сервер
+					if (array[j].stop == 1 && array[j].send_bytes == 0)
+					{
+						server_running = 0;
+						break;
 					}
 				}
 			}
@@ -433,4 +541,17 @@ int main(int argc, char* argv[])
 		
 		
 	}
+
+	// stop: отключаем всех клиентов, закрываем слушающий сокет и файл
+	for (int i = 0; i<MAX_CLIENTS-1; i++)
+	{
+		if (pfd[i].fd != -1)
+		{
+			close_client(&pfd[i], &array[i]);
+		}
+	}
+	s_close(s);
+	fclose(f);
+	printf("Server stopped\n");
+	return 0;
 }
