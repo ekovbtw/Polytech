@@ -768,3 +768,48 @@ void parse_message (client_info *info, int len, FILE* f)
 parse_message(&array[j], status_message, f);
 ```
 
+## Шаг 11
+По условию протокола на каждое сообщение нужно отвечать "ok". 
+
+Изменим рядом с циклом while: 
+
+```
+int client_alive = 1; // 1 - клиент подключён, 0 - отключили
+int status_message; // длина сообщения
+while (array[j].status == 1 && (status_message = find_len_message(&array[j])) != 0) // пока находятся сообщения и есть put
+{
+	printf("LEN_MESSAGE = %d\n", status_message); // печать длины
+	parse_message(&array[j], status_message, f);
+
+	int sent = send(pfd[j].fd, "ok", 2, MSG_NOSIGNAL); // отправляем ок 
+	if (sent == -1)
+	{
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+		{
+			printf("WARN: ok not sent (buffer full)\n");
+		}
+		else
+		{
+			// настоящая ошибка, отключаем клиента
+			sock_err("send", pfd[j].fd);
+			close_client(&pfd[j], &array[j]);
+			client_alive = 0;
+			break; // буфер клиента освобождён, разбор продолжать нельзя
+		}
+	}
+	else if (sent < 2)
+	{
+	// ушла только часть ok
+		printf("WARN: ok sent partially (%d of 2)\n", sent);
+	}
+
+	memmove(array[j].buffer, array[j].buffer+status_message, array[j].bytes_cnt-status_message); // сдвиг на длину сообщения
+	array[j].bytes_cnt -= status_message;
+}
+
+	if (client_alive == 0)
+	{
+		continue; // клиент отключён, переходим к следующему клиенту
+	}
+```
+
