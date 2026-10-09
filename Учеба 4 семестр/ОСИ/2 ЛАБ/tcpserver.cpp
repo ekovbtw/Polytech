@@ -24,10 +24,16 @@ typedef struct client_info // client structure
 	int i;
 	unsigned char* buffer; // буффер для накопления сообщения
 	int bytes_cnt; // количество байт, которые уже пришли
-	int status; // статус: put - 1, else - 0
+	int status; // статус: команда ещё не получена - 0, put - 1, get - 2
 	int capacity;
 	int send_bytes; // сколько байт ok ещё нужно отправить клиенту
 	int stop; // 1 - клиент прислал stop, после отправки ok сервер завершается
+
+	// для команды get: буфер со всеми сообщениями из msg.txt в формате протокола
+	unsigned char* out; // буфер на отправку
+	int out_len; // сколько байт в буфере
+	int out_sent; // сколько байт уже отправлено
+	int out_capacity; // размер выделенной памяти
 
 } client_info;
 
@@ -109,7 +115,135 @@ void close_client(pollfd* pfd_info, client_info* info) // закрытие кл�
 	pfd_info->revents = 0;
 	printf("Client disconnected: %u.%u.%u.%u: %d\n", (info->ip >> 24) & 0xff, (info->ip >> 16) & 0xff, (info->ip >> 8) & 0xff, (info->ip) & 0xff, info->port);
 	free(info->buffer);
+	free(info->out); // буфер get (если был)
 	memset(info, 0, sizeof(client_info)); // очистка
+}
+
+
+// ===================== команда get =====================
+
+// добавление одного сообщения в буфер отправки get (формат как у клиента: 15 байт заголовок + текст + '\0')
+// возвращает 0 - успех, -1 - нет памяти
+int add_to_out(client_info* info, unsigned int number, int day1, int month1, int year1, int day2, int month2, int year2, int hour, int minute, int second, char* text)
+{
+	int len = strlen(text);
+	int need = 15 + len + 1; // размер сообщения
+
+	if (info->out_len + need > info->out_capacity) // не влезает - расширяем
+	{
+		int new_capacity = info->out_capacity;
+		if (new_capacity == 0)
+		{
+			new_capacity = START_CAPACITY;
+		}
+		while (new_capacity < info->out_len + need)
+		{
+			new_capacity *= 2;
+		}
+		unsigned char* tmp = (unsigned char*)realloc(info->out, new_capacity);
+		if (tmp == NULL)
+		{
+			return -1;
+		}
+		info->out = tmp;
+		info->out_capacity = new_capacity;
+	}
+
+	unsigned char* p = info->out + info->out_len; // куда пишем
+	unsigned int number_net = htonl(number); // номер - 4 байта, сетевой порядок
+	memcpy(p, &number_net, 4);
+	p[4] = (unsigned char)day1;
+	p[5] = (unsigned char)month1;
+	unsigned short year_net = htons((unsigned short)year1); // год - 2 байта, сетевой порядок
+	memcpy(p + 6, &year_net, 2);
+	p[8] = (unsigned char)day2;
+	p[9] = (unsigned char)month2;
+	year_net = htons((unsigned short)year2);
+	memcpy(p + 10, &year_net, 2);
+	p[12] = (unsigned char)hour;
+	p[13] = (unsigned char)minute;
+	p[14] = (unsigned char)second;
+	memcpy(p + 15, text, len + 1); // текст вместе с '\0'
+
+	info->out_len += need;
+	return 0;
+}
+
+
+// чтение msg.txt и сборка всех сообщений в буфер отправки клиента
+// строка msg.txt: "IP:порт dd.mm.yyyy dd.mm.yyyy hh:mm:ss текст", IP:порт отбрасываем
+// возвращает количество сообщений или -1 при ошибке
+int build_get_buffer(client_info* info)
+{
+	FILE* in = fopen("msg.txt", "r"); // отдельный поток на чтение, основной f открыт на запись
+	if (in == NULL)
+	{
+		printf("Error open msg.txt for reading\n");
+		return -1;
+	}
+
+	char* line = NULL; // getline сам выделяет память под строку любой длины
+	size_t line_cap = 0;
+	ssize_t read_len;
+	unsigned int number = 0; // номер сообщения, индексация от 0
+
+	while ((read_len = getline(&line, &line_cap, in)) != -1)
+	{
+		while (read_len > 0 && (line[read_len - 1] == '\n' || line[read_len - 1] == '\r')) // убираем конец строки
+		{
+			line[read_len - 1] = '\0';
+			read_len--;
+		}
+
+		char* space = strchr(line, ' '); // конец "IP:порт"
+		if (space == NULL)
+		{
+			continue; // пустая или битая строка
+		}
+		char* rest = space + 1; // начало самого сообщения
+
+		int day1, month1, year1, day2, month2, year2, hour, minute, second;
+		int point = 0; // позиция начала текста
+		if (sscanf(rest, "%d.%d.%d %d.%d.%d %d:%d:%d %n", &day1, &month1, &year1, &day2, &month2, &year2, &hour, &minute, &second, &point) != 9)
+		{
+			continue;
+		}
+
+		if (add_to_out(info, number, day1, month1, year1, day2, month2, year2, hour, minute, second, rest + point) == -1)
+		{
+			free(line);
+			fclose(in);
+			return -1;
+		}
+		number++;
+	}
+
+	free(line);
+	fclose(in);
+	return (int)number;
+}
+
+
+// отправка буфера get клиенту (неблокирующая, остаток досылается по POLLOUT)
+// возвращает 1 - всё отправлено, 0 - отправлено не всё (ждём POLLOUT), -1 - ошибка
+int send_get(pollfd* pfd_info, client_info* info)
+{
+	while (info->out_sent < info->out_len)
+	{
+		int sent = send(pfd_info->fd, info->out + info->out_sent, info->out_len - info->out_sent, MSG_NOSIGNAL);
+		if (sent == -1)
+		{
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+			{
+				pfd_info->events = POLLOUT; // буфер отправки полон, дошлём позже
+				return 0;
+			}
+			sock_err("send", pfd_info->fd);
+			return -1;
+		}
+		info->out_sent += sent;
+	}
+	return 1;
 }
 
 
@@ -353,6 +487,10 @@ int main(int argc, char* argv[])
 		array[i].capacity = 0;
 		array[i].send_bytes = 0;
 		array[i].stop = 0;
+		array[i].out = NULL;
+		array[i].out_len = 0;
+		array[i].out_sent = 0;
+		array[i].out_capacity = 0;
 	}
 
 
@@ -437,7 +575,17 @@ int main(int argc, char* argv[])
 						continue;
 					}
 
-					if (pfd[j].revents & POLLIN) // если чтение
+					if ((pfd[j].revents & POLLIN) && array[j].status == 2) // клиент get: входящие данные не нужны, просто вычитываем
+					{
+						char trash[256];
+						int r = recv(pfd[j].fd, trash, sizeof(trash), 0);
+						if (r == 0 || (r == -1 && errno != EAGAIN && errno != EWOULDBLOCK))
+						{
+							close_client(&pfd[j], &array[j]); // клиент ушёл раньше времени
+							continue;
+						}
+					}
+					else if (pfd[j].revents & POLLIN) // если чтение
 					{
 						if (array[j].capacity - array[j].bytes_cnt < START_CAPACITY) // если свободного места меньше 512 
 						{
@@ -475,6 +623,27 @@ int main(int argc, char* argv[])
 									memmove(array[j].buffer, array[j].buffer+3, array[j].bytes_cnt-3); // сдвигаем, чтобы очистить от put
 									array[j].bytes_cnt = array[j].bytes_cnt-3;
 									printf("PUT complete\n");
+								}
+								else if (array[j].buffer[0] == 'g' && array[j].buffer[1] == 'e' && array[j].buffer[2] == 't') // команда get
+								{
+									array[j].status = 2;
+									array[j].bytes_cnt = 0; // больше от этого клиента ничего не разбираем
+									printf("GET received\n");
+
+									int count = build_get_buffer(&array[j]); // все сообщения из msg.txt в буфер отправки
+									if (count <= 0) // сообщений нет (или ошибка) - сразу отключаем
+									{
+										close_client(&pfd[j], &array[j]);
+										continue;
+									}
+									printf("GET: %d messages, %d bytes\n", count, array[j].out_len);
+
+									int status_get = send_get(&pfd[j], &array[j]);
+									if (status_get != 0) // 1 - всё ушло, -1 - ошибка: в обоих случаях отключаем
+									{
+										close_client(&pfd[j], &array[j]);
+									}
+									continue; // остаток (если есть) дошлём по POLLOUT
 								}
 								else // иначе отключаем
 								{
@@ -520,7 +689,15 @@ int main(int argc, char* argv[])
 					}
 
 					// досылка ok, если сокет снова готов к записи (может прийти вместе с POLLIN, поэтому отдельный if)
-					if (pfd[j].revents & POLLOUT)
+					if ((pfd[j].revents & POLLOUT) && array[j].status == 2) // досылка сообщений клиенту get
+					{
+						if (send_get(&pfd[j], &array[j]) != 0) // всё отправлено или ошибка - отключаем
+						{
+							close_client(&pfd[j], &array[j]);
+						}
+						continue;
+					}
+					else if (pfd[j].revents & POLLOUT)
 					{
 						if (send_ok(&pfd[j], &array[j]) == -1)
 						{
