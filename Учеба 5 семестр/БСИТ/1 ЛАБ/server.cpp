@@ -4,6 +4,8 @@
 #pragma comment(lib, "ws2_32.lib")
 #include <mswsock.h>
 #pragma comment(lib, "mswsock.lib")
+#include <aclapi.h>          // для GetNamedSecurityInfo
+#include <sddl.h>            // для ConvertSidToStringSid
 void schedule_read(int idx);
 void schedule_write(int idx);
 
