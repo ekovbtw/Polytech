@@ -1,0 +1,4 @@
+﻿  test.cpp
+C:\Users\Ilja\source\repos\test\test\test.cpp(104,10): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\Ilja\source\repos\test\test\test.cpp(126,9): warning C4244: инициализация: преобразование "SOCKET" в "int", возможна потеря данных
+  test.vcxproj -> C:\Users\Ilja\source\repos\test\x64\Debug\test.exe

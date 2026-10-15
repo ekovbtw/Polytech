@@ -1,0 +1,14 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "x64\\Debug\\ws2def.obj",
+            "outputs": [
+                "x64\\Debug\\ws2def.h.obj.dt.module.json",
+                "x64\\Debug\\ws2def.h.obj.dt.d.json"
+            ],
+            "requires": []
+        }
+    ]
+}

@@ -1,0 +1,5 @@
+﻿  OS_lab3_1.cpp
+C:\Users\Ilja\source\repos\OS_lab3_1\OS_lab3_1\OS_lab3_1.cpp(93,29): warning C4244: =: преобразование "ULONGLONG" в "DWORD", возможна потеря данных
+C:\Users\Ilja\source\repos\OS_lab3_1\OS_lab3_1\OS_lab3_1.cpp(176,11): warning C4244: =: преобразование "__int64" в "int", возможна потеря данных
+C:\Users\Ilja\source\repos\OS_lab3_1\OS_lab3_1\OS_lab3_1.cpp(177,25): warning C4244: =: преобразование "__int64" в "int", возможна потеря данных
+  OS_lab3_1.vcxproj -> C:\Users\Ilja\source\repos\OS_lab3_1\x64\Debug\OS_lab3_1.exe

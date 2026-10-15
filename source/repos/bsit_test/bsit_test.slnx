@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="bsit_test/bsit_test.vcxproj" Id="7bb3ff1e-00a6-4ae4-ab8b-26ef621437b6" />
+  <Project Path="client_crypt/client_crypt.vcxproj" Id="2336d47d-6767-4565-b50f-07c80c71324a" />
+  <Project Path="server_crypt/server_crypt.vcxproj" Id="37aa6f18-7cb2-46a6-b7d2-0a9840ac3688" />
+</Solution>

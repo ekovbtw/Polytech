@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Ilja\\source\\repos\\OS_2lab_2\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A1F3FC3C-ACD9-42E1-876A-03C1840F9072}|OS_2lab_2\\OS_2lab_2.vcxproj|C:\\Users\\Ilja\\source\\repos\\OS_2lab_2\\OS_2lab_2\\OS_2lab_2.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A1F3FC3C-ACD9-42E1-876A-03C1840F9072}|OS_2lab_2\\OS_2lab_2.vcxproj|solutionrelative:OS_2lab_2\\OS_2lab_2.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "OS_2lab_2.cpp",
+              "DocumentMoniker": "C:\\Users\\Ilja\\source\\repos\\OS_2lab_2\\OS_2lab_2\\OS_2lab_2.cpp",
+              "RelativeDocumentMoniker": "OS_2lab_2\\OS_2lab_2.cpp",
+              "ToolTip": "C:\\Users\\Ilja\\source\\repos\\OS_2lab_2\\OS_2lab_2\\OS_2lab_2.cpp",
+              "RelativeToolTip": "OS_2lab_2\\OS_2lab_2.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-09-28T13:36:37.312Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+﻿  OS_3lab_4.cpp
+C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(14,15): warning C4477: "fscanf": в строке форматирования "%d" требуется аргумент типа "int *", но вариативный аргумент "1" имеет тип "unsigned __int64 *"
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(14,15):
+      рекомендуется использовать "%lld" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(14,15):
+      рекомендуется использовать "%Id" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(14,15):
+      рекомендуется использовать "%I64d" в строке форматирования
+  
+C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(16,15): warning C4477: "fscanf": в строке форматирования "%d" требуется аргумент типа "int *", но вариативный аргумент "1" имеет тип "unsigned __int64 *"
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(16,15):
+      рекомендуется использовать "%lld" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(16,15):
+      рекомендуется использовать "%Id" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(16,15):
+      рекомендуется использовать "%I64d" в строке форматирования
+  
+C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(17,15): warning C4477: "fscanf": в строке форматирования "%d" требуется аргумент типа "int *", но вариативный аргумент "1" имеет тип "unsigned __int64 *"
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(17,15):
+      рекомендуется использовать "%lld" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(17,15):
+      рекомендуется использовать "%Id" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(17,15):
+      рекомендуется использовать "%I64d" в строке форматирования
+  
+C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(18,15): warning C4477: "fscanf": в строке форматирования "%d" требуется аргумент типа "int *", но вариативный аргумент "1" имеет тип "unsigned __int64 *"
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(18,15):
+      рекомендуется использовать "%lld" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(18,15):
+      рекомендуется использовать "%Id" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(18,15):
+      рекомендуется использовать "%I64d" в строке форматирования
+  
+C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9): warning C4477: "printf": в строке форматирования "%d" требуется аргумент типа "int", но вариативный аргумент "1" имеет тип "unsigned __int64"
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%lld" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%Id" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%I64d" в строке форматирования
+  
+C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9): warning C4477: "printf": в строке форматирования "%d" требуется аргумент типа "int", но вариативный аргумент "2" имеет тип "unsigned __int64"
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%lld" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%Id" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%I64d" в строке форматирования
+  
+C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9): warning C4477: "printf": в строке форматирования "%d" требуется аргумент типа "int", но вариативный аргумент "3" имеет тип "unsigned __int64"
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%lld" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%Id" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%I64d" в строке форматирования
+  
+C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9): warning C4477: "printf": в строке форматирования "%d" требуется аргумент типа "int", но вариативный аргумент "4" имеет тип "unsigned __int64"
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%lld" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%Id" в строке форматирования
+      C:\Users\Ilja\source\repos\OS_3lab_4\OS_3lab_4\OS_3lab_4.cpp(19,9):
+      рекомендуется использовать "%I64d" в строке форматирования
+  
+  OS_3lab_4.vcxproj -> C:\Users\Ilja\source\repos\OS_3lab_4\x64\Debug\OS_3lab_4.exe

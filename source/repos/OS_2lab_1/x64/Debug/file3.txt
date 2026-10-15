@@ -1,0 +1,8 @@
+11.09.2001 12.09.2001 23:14:51 Valid one
+52.52.5222 52.52.2052 52:52:52 Invalid date
+11,09,2001 12.09.2001 23:14:51 Comma instead of dot
+01.01.2020 02.01.2020 25:70:99 Invalid time
+31.04.2020 01.05.2020 10:00:00 April has 30 days
+15.15.2020 16.06.2020 12:00:00 Month 15
+aa.bb.cccc dd.ee.ffff gg:hh:ii Letters instead of numbers
+20.10.2020 21.10.2020 14:30:00 Valid two
