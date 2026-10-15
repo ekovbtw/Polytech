@@ -1,5 +1,0 @@
-192.168.229.132:9000 11.09.2001 12.09.2001 23:14:51 X
-192.168.229.132:9000 11.09.2001 12.09.2001 23:14:51 Message with multiple spaces inside
-192.168.229.132:9000 11.09.2001 12.09.2001 23:14:51 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-192.168.229.132:9000 11.09.2001 12.09.2001 23:14:51 Valid one
-192.168.229.132:9000 20.10.2020 21.10.2020 14:30:00 Valid two

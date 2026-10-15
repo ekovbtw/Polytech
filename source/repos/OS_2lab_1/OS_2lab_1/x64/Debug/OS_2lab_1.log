@@ -1,5 +1,0 @@
-﻿  OS_2lab_1.cpp
-C:\Users\Ilja\source\repos\OS_2lab_1\OS_2lab_1\OS_2lab_1.cpp(88,10): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
-C:\Users\Ilja\source\repos\OS_2lab_1\OS_2lab_1\OS_2lab_1.cpp(196,10): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
-C:\Users\Ilja\source\repos\OS_2lab_1\OS_2lab_1\OS_2lab_1.cpp(381,13): warning C4244: =: преобразование "SOCKET" в "int", возможна потеря данных
-  OS_2lab_1.vcxproj -> C:\Users\Ilja\source\repos\OS_2lab_1\x64\Debug\OS_2lab_1.exe
