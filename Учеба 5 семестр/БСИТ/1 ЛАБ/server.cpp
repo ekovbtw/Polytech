@@ -17,7 +17,7 @@ typedef struct CLIENT_CONTEXT
 	OVERLAPPED overlapped_send;
 	OVERLAPPED overlapped_cancel;
 	char buffer_recv[512];
-	char buffer_send[512];
+	char buffer_send[4096];
 	unsigned long bytes_received;
 	unsigned long bytes_sent;
 	unsigned long bytes_send_total;
@@ -91,7 +91,7 @@ void schedule_read(int idx)
 	WSABUF wsaBuf;
 	wsaBuf.buf = array_clients[idx].buffer_recv + array_clients[idx].bytes_received;
 	wsaBuf.len = sizeof(array_clients[idx].buffer_recv) - array_clients[idx].bytes_received;
-	
+
 
 	array_clients[idx].flags_WSA_recv = 0;
 	memset(&array_clients[idx].overlapped_recv, 0, sizeof(OVERLAPPED));
@@ -147,7 +147,7 @@ void get_os_version(char* out, int out_size)
 	// разрядность:
 	SYSTEM_INFO si;
 	memset(&si, 0, sizeof(si));
-	GetNativeSystemInfo(&si);   
+	GetNativeSystemInfo(&si);
 	const char* arch = (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
 		? "x64" : "x86";
 
@@ -160,7 +160,7 @@ void get_os_version(char* out, int out_size)
 void get_memory_info(char* out, int out_size)
 {
 	MEMORYSTATUSEX ms; // использует 64 битные поля для больших объёмов памяти (в отличие от globalmemorystatus)
-	ms.dwLength = sizeof(ms);       
+	ms.dwLength = sizeof(ms);
 	if (!GlobalMemoryStatusEx(&ms)) {
 		sprintf_s(out, out_size, "Failed to get memory info\r\n");
 		return;
@@ -178,9 +178,9 @@ void get_memory_info(char* out, int out_size)
 void get_time_info(char* out, int out_size)
 {
 	SYSTEMTIME st;
-	GetLocalTime(&st);  
+	GetLocalTime(&st);
 
-	ULONGLONG ms = GetTickCount64();  
+	ULONGLONG ms = GetTickCount64();
 	ULONGLONG sec = ms / 1000;
 	ULONGLONG days = sec / 86400;
 	ULONGLONG hrs = (sec % 86400) / 3600;
@@ -202,7 +202,7 @@ void get_disks_info(char* out, int out_size)
 
 	for (int i = 0; i < 26; i++)
 	{
-		if (!((drives >> i) & 1)) continue; 
+		if (!((drives >> i) & 1)) continue;
 
 		char root[4] = { (char)('A' + i), ':', '\\', '\0' };  // "C:\"
 
@@ -223,7 +223,7 @@ void get_disks_info(char* out, int out_size)
 
 		char line[64];
 		sprintf_s(line, sizeof(line), "%s  %-9s  FS: %s\r\n", root, typeStr, fsName);
-		strcat_s(out, out_size, line);      
+		strcat_s(out, out_size, line);
 	}
 }
 
@@ -255,9 +255,124 @@ void get_disk_space_info(char* out, int out_size)
 }
 
 
+void get_owner_info(const char* path, SE_OBJECT_TYPE objType,  char* out, int out_size)
+{
+	PSID pOwnerSid = NULL; 
+	PSECURITY_DESCRIPTOR pSD = NULL; 
+
+
+	DWORD res = GetNamedSecurityInfoA(
+		path,                          
+		objType,               // тип объекта
+		OWNER_SECURITY_INFORMATION, // OWNER     
+		&pOwnerSid,                     
+		NULL, NULL, NULL,               
+		&pSD);                          
+
+	if (res != ERROR_SUCCESS) {
+		sprintf_s(out, out_size, "Failed to get owner (error %lu)\r\n", res);
+		return;
+	}
+
+	
+	char name[256] = "", domain[256] = "";
+	DWORD nameLen = sizeof(name), domainLen = sizeof(domain);
+	SID_NAME_USE sidType;
+	BOOL ok = LookupAccountSidA(NULL, pOwnerSid,
+		name, &nameLen,
+		domain, &domainLen, &sidType);
+
+	
+	char* sidString = NULL;
+	ConvertSidToStringSidA(pOwnerSid, &sidString);
+
+
+	if (ok)
+		sprintf_s(out, out_size, "Owner: %s\\%s\r\nSID: %s\r\n",
+			domain, name, sidString ? sidString : "?");
+	else
+		sprintf_s(out, out_size, "Owner name unknown\r\nSID: %s\r\n",
+			sidString ? sidString : "?");
+
+	if (sidString) LocalFree(sidString);
+	if (pSD) LocalFree(pSD);
+}
+
+
+void get_permissions_info(const char* path, SE_OBJECT_TYPE objType,  char* out, int out_size)
+{
+	PACL pDacl = NULL;
+	PSECURITY_DESCRIPTOR pSD = NULL;
+	out[0] = '\0';
+
+
+	DWORD res = GetNamedSecurityInfoA(path, objType,
+		DACL_SECURITY_INFORMATION, //DACL 
+		NULL, NULL, &pDacl, NULL, &pSD);
+	if (res != ERROR_SUCCESS) {
+		sprintf_s(out, out_size, "Failed to get DACL (error %lu)\r\n", res);
+		return;
+	}
+	if (pDacl == NULL) {
+		sprintf_s(out, out_size, "No DACL (access unrestricted)\r\n");
+		if (pSD) LocalFree(pSD);
+		return;
+	}
+
+	//ACL count
+	ACL_SIZE_INFORMATION aclSize;
+	GetAclInformation(pDacl, &aclSize, sizeof(aclSize), AclSizeInformation);
+
+	char line[400];
+	sprintf_s(line, sizeof(line), "DACL has %lu entries:\r\n", aclSize.AceCount);
+	strcat_s(out, out_size, line);
+
+	
+	for (DWORD i = 0; i < aclSize.AceCount; i++)
+	{
+		
+		ACCESS_ALLOWED_ACE* pAce = NULL;
+		if (!GetAce(pDacl, i, (void**)&pAce)) continue; // ACE
+
+		PSID pSid = (PSID)&pAce->SidStart; // take SID 
+
+		
+		char name[256] = "", domain[256] = ""; // sid to char
+		DWORD nameLen = sizeof(name), domainLen = sizeof(domain);
+		SID_NAME_USE st;
+		LookupAccountSidA(NULL, pSid, name, &nameLen, domain, &domainLen, &st);
+
+		// тип ACE
+		const char* aceType =
+			(pAce->Header.AceType == ACCESS_ALLOWED_ACE_TYPE) ? "ALLOW" :
+			(pAce->Header.AceType == ACCESS_DENIED_ACE_TYPE) ? "DENY" : "OTHER";
+
+		// access mask
+		ACCESS_MASK mask = pAce->Mask;
+		char rights[200] = "";
+		if (mask & GENERIC_ALL)      strcat_s(rights, sizeof(rights), "ALL ");
+		if (mask & GENERIC_READ)     strcat_s(rights, sizeof(rights), "READ ");
+		if (mask & GENERIC_WRITE)    strcat_s(rights, sizeof(rights), "WRITE ");
+		if (mask & GENERIC_EXECUTE)  strcat_s(rights, sizeof(rights), "EXECUTE ");
+		if (mask & FILE_READ_DATA)   strcat_s(rights, sizeof(rights), "READ_DATA ");
+		if (mask & FILE_WRITE_DATA)  strcat_s(rights, sizeof(rights), "WRITE_DATA ");
+		if (mask & DELETE)           strcat_s(rights, sizeof(rights), "DELETE ");
+		if (rights[0] == '\0') sprintf_s(rights, sizeof(rights), "mask=0x%lX", mask);
+
+		sprintf_s(line, sizeof(line), "  [%lu] %s %s\\%s : %s\r\n",
+			i, aceType, domain, name, rights);
+		strcat_s(out, out_size, line);
+	}
+
+	if (pSD) LocalFree(pSD);
+}
+
+
+
+
 void process_request(int idx)
 {
-	char cmd = array_clients[idx].buffer_recv[0];   
+	char cmd = array_clients[idx].buffer_recv[0];
 	char* out = array_clients[idx].buffer_send;
 	int out_size = sizeof(array_clients[idx].buffer_send);
 
@@ -272,10 +387,22 @@ void process_request(int idx)
 		get_time_info(out, out_size);
 		break;
 	case '4':
-		get_disks_info(out, out_size); 
+		get_disks_info(out, out_size);
 		break;
 	case '5':
-		get_disk_space_info(out, out_size); 
+		get_disk_space_info(out, out_size);
+		break;
+	case '6':   
+		get_owner_info("C:\\Windows\\notepad.exe", SE_FILE_OBJECT, out, out_size);
+		break;
+	case '7':   
+		get_permissions_info("C:\\Windows\\notepad.exe", SE_FILE_OBJECT, out, out_size);
+		break;
+	case '8':  
+		get_owner_info("MACHINE\\SOFTWARE\\Microsoft", SE_REGISTRY_KEY, out, out_size);
+		break;
+	case '9':
+		get_permissions_info("MACHINE\\SOFTWARE\\Microsoft", SE_REGISTRY_KEY, out, out_size);
 		break;
 	default:
 		sprintf_s(out, out_size, "Unknown command\n");
@@ -390,11 +517,11 @@ int main()
 			}
 			else if (lpOverlapped == &array_clients[key].overlapped_send) // если это событие записи
 			{
-				array_clients[key].bytes_sent += bytesTransferred; 
+				array_clients[key].bytes_sent += bytesTransferred;
 				if (array_clients[key].bytes_sent < array_clients[key].bytes_send_total)
 				{
 					schedule_write(key);
-				} 
+				}
 				else
 				{
 					printf("response sent to client %llu\n", (unsigned long long)key);
