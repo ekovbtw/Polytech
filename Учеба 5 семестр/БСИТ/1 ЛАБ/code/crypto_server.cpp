@@ -34,7 +34,7 @@ BYTE* recv_blob(SOCKET s, DWORD* outLen)
     DWORD len = 0;
     if (!recv_exact(s, (char*)&len, sizeof(len))) return NULL;   // длина — через цикл
     if (len == 0 || len > 100000) return NULL;
-    BYTE* buf = (BYTE*)malloc(len);
+    BYTE* buf = (BYTE*)malloc(len+1);
     if (!buf) return NULL;
     if (!recv_exact(s, (char*)buf, len)) { free(buf); return NULL; }  // данные — тем же циклом
     *outLen = len;
@@ -94,6 +94,78 @@ BYTE* export_public_key(HCRYPTKEY hKey, DWORD* outLen)
 }
 
 
+HCRYPTKEY import_public_key(HCRYPTPROV hProv, BYTE* blob, DWORD blobLen)
+{
+    HCRYPTKEY hKey = 0;
+    if (!CryptImportKey(hProv, blob, blobLen, 0, 0, &hKey)) {
+        printf("CryptImportKey failed: %lu\n", GetLastError());
+        return 0;
+    }
+    printf("Client public key imported.\n");
+    return hKey;
+}
+
+HCRYPTKEY generate_session_key(HCRYPTPROV hProv)
+{
+    HCRYPTKEY hKey = 0;
+    if (!CryptGenKey(hProv, CALG_RC4, CRYPT_EXPORTABLE, &hKey)) {
+        printf("Session key gen failed: %lu\n", GetLastError());
+        return 0;
+    }
+    printf("Session key generated.\n");
+    return hKey;
+}
+
+
+BYTE* export_session_key(HCRYPTKEY hSessionKey, HCRYPTKEY hClientPublic, DWORD* outLen)
+{
+    DWORD len = 0;
+    // 1-й вызов — размер
+    if (!CryptExportKey(hSessionKey, hClientPublic, SIMPLEBLOB, 0, NULL, &len)) {
+        printf("Export session (size) failed: %lu\n", GetLastError());
+        return NULL;
+    }
+    BYTE* blob = (BYTE*)malloc(len);
+    if (!blob) return NULL;
+    // 2-й вызов — данные
+    if (!CryptExportKey(hSessionKey, hClientPublic, SIMPLEBLOB, 0, blob, &len)) {
+        printf("Export session (data) failed: %lu\n", GetLastError());
+        free(blob);
+        return NULL;
+    }
+    *outLen = len;
+    printf("Session key exported (encrypted), %lu bytes.\n", len);
+    return blob;
+}
+
+
+// шифрует строку text ключом hKey, результат пишет в buf, длину — в *outLen
+int encrypt_message(HCRYPTKEY hKey, const char* text, BYTE* buf, DWORD bufSize, DWORD* outLen)
+{
+    DWORD len = (DWORD)strlen(text);
+    if (len > bufSize) return 0;
+    memcpy(buf, text, len);                 // кладём открытый текст в буфер
+    if (!CryptEncrypt(hKey, 0, TRUE, 0, buf, &len, bufSize)) {
+        printf("CryptEncrypt failed: %lu\n", GetLastError());
+        return 0;
+    }
+    *outLen = len;                          // len теперь = длина шифртекста
+    return 1;
+}
+
+
+// расшифровывает buf (длины len) ключом hKey, результат — в том же buf (C-строкой)
+int decrypt_message(HCRYPTKEY hKey, BYTE* buf, DWORD* len)
+{
+    if (!CryptDecrypt(hKey, 0, TRUE, 0, buf, len)) {
+        printf("CryptDecrypt failed: %lu\n", GetLastError());
+        return 0;
+    }
+    buf[*len] = '\0';                       // завершаем расшифрованную строку нулём
+    return 1;
+}
+
+
 int main()
 {
     WSADATA wsaData; WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -118,7 +190,23 @@ int main()
     if (pubBlob)
         printf("Received public key: %lu bytes.\n", pubLen);
 
-    // ... дальше: импорт ключа, генерация сессионного, отправка (следующие шаги) ...
+    HCRYPTKEY hClientPublic = import_public_key(hProv, pubBlob, pubLen);
+    HCRYPTKEY hSessionKey = generate_session_key(hProv);
+    DWORD sessLen; BYTE* sessBlob = export_session_key(hSessionKey, hClientPublic, &sessLen);
+    send_blob(client, sessBlob, sessLen);
+    printf("Session key sent to client.\n");
+
+    DWORD encLen;
+    BYTE* encMsg = recv_blob(client, &encLen);
+    if (encMsg) {
+        DWORD len = encLen;
+        decrypt_message(hSessionKey, encMsg, &len);  // без buf[len]='\0' внутри
+        printf("Decrypted message: %.*s\n", (int)len, (char*)encMsg);  // %.*s — печать ровно len байт
+        free(encMsg);
+    }
+
+
+    free(sessBlob);
 
     free(pubBlob);
     CryptReleaseContext(hProv, 0);

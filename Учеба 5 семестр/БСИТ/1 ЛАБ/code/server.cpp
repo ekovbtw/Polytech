@@ -6,10 +6,14 @@
 #pragma comment(lib, "mswsock.lib")
 #include <aclapi.h>          // для GetNamedSecurityInfo
 #include <sddl.h>            // для ConvertSidToStringSid
+
 void schedule_read(int idx);
 void schedule_write(int idx);
 
 #define MAX_CLIENTS 100
+#define STAGE_HANDSHAKE 0
+#define STAGE_READY     1
+
 typedef struct CLIENT_CONTEXT
 {
 	SOCKET socket;
@@ -22,9 +26,17 @@ typedef struct CLIENT_CONTEXT
 	unsigned long bytes_sent;
 	unsigned long bytes_send_total;
 	DWORD flags_WSA_recv;
+
+	int stage;                  // стадия: 0 = ждем public, 1 = ready (шифр. обмен)
+	HCRYPTKEY hClientPublic;    
+	HCRYPTKEY hSessionKey;      
 } CLIENT_CONTEXT;
 
+
 CLIENT_CONTEXT array_clients[MAX_CLIENTS + 1];
+
+
+HCRYPTPROV hProv;   // криптопровайдер
 
 
 HANDLE hCompletionPort; // IOCP 
@@ -369,50 +381,209 @@ void get_permissions_info(const char* path, SE_OBJECT_TYPE objType,  char* out, 
 
 
 
-
-void process_request(int idx)
+HCRYPTPROV acquire_crypto_context()
 {
-	char cmd = array_clients[idx].buffer_recv[0];
-	char* out = array_clients[idx].buffer_send;
-	int out_size = sizeof(array_clients[idx].buffer_send);
+	HCRYPTPROV hProv = 0;
 
-	switch (cmd) {
-	case '1':
-		get_os_version(out, out_size);
-		break;
-	case '2':
-		get_memory_info(out, out_size);
-		break;
-	case '3':
-		get_time_info(out, out_size);
-		break;
-	case '4':
-		get_disks_info(out, out_size);
-		break;
-	case '5':
-		get_disk_space_info(out, out_size);
-		break;
-	case '6':   
-		get_owner_info("C:\\Windows\\notepad.exe", SE_FILE_OBJECT, out, out_size);
-		break;
-	case '7':   
-		get_permissions_info("C:\\Windows\\notepad.exe", SE_FILE_OBJECT, out, out_size);
-		break;
-	case '8':  
-		get_owner_info("MACHINE\\SOFTWARE\\Microsoft", SE_REGISTRY_KEY, out, out_size);
-		break;
-	case '9':
-		get_permissions_info("MACHINE\\SOFTWARE\\Microsoft", SE_REGISTRY_KEY, out, out_size);
-		break;
-	default:
-		sprintf_s(out, out_size, "Unknown command\n");
-		break;
+	if (!CryptAcquireContextA(&hProv, NULL, MS_ENHANCED_PROV_A, PROV_RSA_FULL, 0))
+	{
+
+		if (!CryptAcquireContextA(&hProv, NULL, MS_ENHANCED_PROV_A, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+		{
+			printf("CryptAcquireContext failed: %lu\n", GetLastError());
+			return 0;
+		}
 	}
+	printf("Crypto context acquired.\n");
+	return hProv;
+}
 
-	array_clients[idx].bytes_send_total = strlen(out);
-	array_clients[idx].bytes_sent = 0;
+
+HCRYPTKEY import_public_key(HCRYPTPROV hProv, BYTE* blob, DWORD blobLen)
+{
+	HCRYPTKEY hKey = 0;
+	if (!CryptImportKey(hProv, blob, blobLen, 0, 0, &hKey)) {
+		printf("CryptImportKey failed: %lu\n", GetLastError());
+		return 0;
+	}
+	printf("Client public key imported.\n");
+	return hKey;
+}
+
+
+HCRYPTKEY generate_session_key(HCRYPTPROV hProv)
+{
+	HCRYPTKEY hKey = 0;
+	if (!CryptGenKey(hProv, CALG_RC4, CRYPT_EXPORTABLE, &hKey)) {
+		printf("Session key gen failed: %lu\n", GetLastError());
+		return 0;
+	}
+	printf("Session key generated.\n");
+	return hKey;
+}
+
+
+BYTE* export_session_key(HCRYPTKEY hSessionKey, HCRYPTKEY hClientPublic, DWORD* outLen)
+{
+	DWORD len = 0;
+	// 1-й вызов — размер
+	if (!CryptExportKey(hSessionKey, hClientPublic, SIMPLEBLOB, 0, NULL, &len)) {
+		printf("Export session (size) failed: %lu\n", GetLastError());
+		return NULL;
+	}
+	BYTE* blob = (BYTE*)malloc(len);
+	if (!blob) return NULL;
+	// 2-й вызов — данные
+	if (!CryptExportKey(hSessionKey, hClientPublic, SIMPLEBLOB, 0, blob, &len)) {
+		printf("Export session (data) failed: %lu\n", GetLastError());
+		free(blob);
+		return NULL;
+	}
+	*outLen = len;
+	printf("Session key exported (encrypted), %lu bytes.\n", len);
+	return blob;
+}
+
+
+// шифрует строку 
+int encrypt_message(HCRYPTKEY hKey, const char* text, BYTE* buf, DWORD bufSize, DWORD* outLen)
+{
+	DWORD len = (DWORD)strlen(text);
+	if (len > bufSize) return 0;
+	memcpy(buf, text, len);                 
+	if (!CryptEncrypt(hKey, 0, TRUE, 0, buf, &len, bufSize)) {
+		printf("CryptEncrypt failed: %lu\n", GetLastError());
+		return 0;
+	}
+	*outLen = len;                       
+	return 1;
+}
+
+
+// расшифровывает 
+int decrypt_message(HCRYPTKEY hKey, BYTE* buf, DWORD* len)
+{
+	if (!CryptDecrypt(hKey, 0, TRUE, 0, buf, len)) {
+		printf("CryptDecrypt failed: %lu\n", GetLastError());
+		return 0;
+	}
+	buf[*len] = '\0';                       
+	return 1;
+}
+
+// собирает ответ по команде в out, НИЧЕГО не отправляет
+void build_response(char cmd, const char* arg, char* out, int out_size)
+{
+	switch (cmd) {
+	case '1': get_os_version(out, out_size); break;
+	case '2': get_memory_info(out, out_size); break;
+	case '3': get_time_info(out, out_size); break;
+	case '4': get_disks_info(out, out_size); break;
+	case '5': get_disk_space_info(out, out_size); break;
+	case '6': get_owner_info(arg, SE_FILE_OBJECT, out, out_size); break;
+	case '7': get_permissions_info(arg, SE_FILE_OBJECT, out, out_size); break;
+	case '8': get_owner_info(arg, SE_REGISTRY_KEY, out, out_size); break;
+	case '9': get_permissions_info(arg, SE_REGISTRY_KEY, out, out_size); break;
+	default:  sprintf_s(out, out_size, "Unknown command\r\n"); break;
+	}
+}
+
+
+void handle_request(int idx)
+{
+	CLIENT_CONTEXT* c = &array_clients[idx];
+
+	// длину, потом тело
+	if (c->bytes_received < sizeof(DWORD)) { schedule_read(idx); return; }
+	DWORD blobLen;
+	memcpy(&blobLen, c->buffer_recv, sizeof(DWORD));
+	if (blobLen > 400) {   
+		printf("Bad request length from client %d\n", idx);
+		closesocket(c->socket); memset(c, 0, sizeof(*c)); return;
+	}
+	if (c->bytes_received < sizeof(DWORD) + blobLen) { schedule_read(idx); return; }
+
+	// расшифровка
+	BYTE encRequest[512];
+	memcpy(encRequest, c->buffer_recv + sizeof(DWORD), blobLen);
+	DWORD reqLen = blobLen;
+	decrypt_message(c->hSessionKey, encRequest, &reqLen);
+	
+
+	
+	encRequest[reqLen] = '\0';           // завершаем строку (reqLen — длина расшифрованного)
+	char cmd = encRequest[0];
+
+	// ищем аргумент: пропускаем "цифру" и пробел
+	char* arg = (char*)encRequest + 1;   // после цифры
+	while (*arg == ' ') arg++;           // пропускаем пробел(ы)
+	
+
+	char plainResponse[4096];
+	build_response(cmd, arg, plainResponse, sizeof(plainResponse));
+	
+
+	//  шифруем 
+	BYTE encResponse[4096];
+	DWORD encRespLen;
+	encrypt_message(c->hSessionKey, plainResponse, encResponse, sizeof(encResponse), &encRespLen);
+
+	
+	memcpy(c->buffer_send, &encRespLen, sizeof(DWORD));
+	memcpy(c->buffer_send + sizeof(DWORD), encResponse, encRespLen);
+	c->bytes_send_total = sizeof(DWORD) + encRespLen;
+	c->bytes_sent = 0;
+	c->bytes_received = 0;   
+
 	schedule_write(idx);
 }
+
+
+void handle_handshake(int idx) // обработка рукопожатия
+{
+	CLIENT_CONTEXT* c = &array_clients[idx];
+
+	// ждём, пока придёт хотя бы длина (4 байта)
+	if (c->bytes_received < sizeof(DWORD)) { schedule_read(idx); return; }
+
+	
+	DWORD blobLen;
+	memcpy(&blobLen, c->buffer_recv, sizeof(DWORD));
+
+	// защита
+	if (blobLen > 1000) {
+		printf("Bad public key length from client %d\n", idx);
+		closesocket(c->socket);
+		memset(c, 0, sizeof(*c));
+		return;
+	}
+
+	// ждем остальное
+	if (c->bytes_received < sizeof(DWORD) + blobLen) { schedule_read(idx); return; }
+
+	
+	BYTE* pubBlob = (BYTE*)(c->buffer_recv + sizeof(DWORD));   // копируем данные
+
+	c->hClientPublic = import_public_key(hProv, pubBlob, blobLen);
+	c->hSessionKey = generate_session_key(hProv);
+
+	DWORD sessLen;
+	BYTE* sessBlob = export_session_key(c->hSessionKey, c->hClientPublic, &sessLen);
+
+	// формируем ответ
+	memcpy(c->buffer_send, &sessLen, sizeof(DWORD));
+	memcpy(c->buffer_send + sizeof(DWORD), sessBlob, sessLen);
+	c->bytes_send_total = sizeof(DWORD) + sessLen;
+	c->bytes_sent = 0;
+	free(sessBlob);
+
+	c->bytes_received = 0;        
+	c->stage = STAGE_READY;       
+	printf("Handshake done with client %d\n", idx);
+
+	schedule_write(idx);          
+}
+
 
 
 int main()
@@ -425,6 +596,10 @@ int main()
 		return 1;
 	}
 	printf("WSAStartup succeeded.\n");
+
+
+	hProv = acquire_crypto_context();
+	if (hProv == 0) { /* ошибка, выход */ }
 
 
 	SOCKET listenSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
@@ -513,7 +688,12 @@ int main()
 					continue;
 				}
 				array_clients[key].bytes_received += bytesTransferred;
-				process_request((int)key);
+				if (array_clients[key].stage == STAGE_HANDSHAKE) {
+					handle_handshake((int)key);
+				}
+				else {
+					handle_request((int)key);
+				}
 			}
 			else if (lpOverlapped == &array_clients[key].overlapped_send) // если это событие записи
 			{
@@ -525,6 +705,7 @@ int main()
 				else
 				{
 					printf("response sent to client %llu\n", (unsigned long long)key);
+					schedule_read((int)key);  
 				}
 			}
 		}

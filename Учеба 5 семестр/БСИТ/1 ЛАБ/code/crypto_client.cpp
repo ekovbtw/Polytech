@@ -34,7 +34,7 @@ BYTE* recv_blob(SOCKET s, DWORD* outLen)
     DWORD len = 0;
     if (!recv_exact(s, (char*)&len, sizeof(len))) return NULL;   // длина — через цикл
     if (len == 0 || len > 100000) return NULL;
-    BYTE* buf = (BYTE*)malloc(len);
+    BYTE* buf = (BYTE*)malloc(len+1);
     if (!buf) return NULL;
     if (!recv_exact(s, (char*)buf, len)) { free(buf); return NULL; }  // данные — тем же циклом
     *outLen = len;
@@ -94,34 +94,89 @@ BYTE* export_public_key(HCRYPTKEY hKey, DWORD* outLen)
 }
 
 
+HCRYPTKEY import_session_key(HCRYPTPROV hProv, HCRYPTKEY hMyKey, BYTE* blob, DWORD blobLen)
+{
+    HCRYPTKEY hSessionKey = 0;
+    // 4-й аргумент = hMyKey (наша пара с приватным ключом) → расшифрует блоб
+    if (!CryptImportKey(hProv, blob, blobLen, hMyKey, 0, &hSessionKey)) {
+        printf("Import session key failed: %lu\n", GetLastError());
+        return 0;
+    }
+    printf("Session key imported (decrypted).\n");
+    return hSessionKey;
+}
+
+
+// шифрует строку text ключом hKey, результат пишет в buf, длину — в *outLen
+int encrypt_message(HCRYPTKEY hKey, const char* text, BYTE* buf, DWORD bufSize, DWORD* outLen)
+{
+    DWORD len = (DWORD)strlen(text);
+    if (len > bufSize) return 0;
+    memcpy(buf, text, len);                 // кладём открытый текст в буфер
+    if (!CryptEncrypt(hKey, 0, TRUE, 0, buf, &len, bufSize)) {
+        printf("CryptEncrypt failed: %lu\n", GetLastError());
+        return 0;
+    }
+    *outLen = len;                          // len теперь = длина шифртекста
+    return 1;
+}
+
+
+// расшифровывает buf (длины len) ключом hKey, результат — в том же buf (C-строкой)
+int decrypt_message(HCRYPTKEY hKey, BYTE* buf, DWORD* len)
+{
+    if (!CryptDecrypt(hKey, 0, TRUE, 0, buf, len)) {
+        printf("CryptDecrypt failed: %lu\n", GetLastError());
+        return 0;
+    }
+    buf[*len] = '\0';                       // завершаем расшифрованную строку нулём
+    return 1;
+}
+
+
 int main()
 {
     WSADATA wsaData; WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-    HCRYPTPROV hProv = acquire_crypto_context();   // та же функция, что у клиента
+    HCRYPTPROV hProv = acquire_crypto_context();
+    HCRYPTKEY  hKey = generate_keypair(hProv);
+    DWORD pubLen; BYTE* pubBlob = export_public_key(hKey, &pubLen);
 
-    SOCKET listenSock = socket(AF_INET, SOCK_STREAM, 0);
+    SOCKET s = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9000);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    bind(listenSock, (struct sockaddr*)&addr, sizeof(addr));
-    listen(listenSock, 1);
-    printf("Server listening on 9000...\n");
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    if (connect(s, (struct sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
+        printf("connect failed\n"); return 1;
+    }
+    printf("Connected.\n");
 
-    SOCKET client = accept(listenSock, NULL, NULL);   // синхронно ждём одного клиента
-    printf("Client connected.\n");
+    // ОТПРАВЛЯЕМ public-ключ серверу (шаг 2 схемы)
+    if (send_blob(s, pubBlob, pubLen))
+        printf("Public key sent (%lu bytes).\n", pubLen);
 
-    // ПРИНИМАЕМ public-ключ клиента (шаг 3 схемы)
-    DWORD pubLen; BYTE* pubBlob = recv_blob(client, &pubLen);
-    if (pubBlob)
-        printf("Received public key: %lu bytes.\n", pubLen);
+    DWORD sessLen;
+    BYTE* sessBlob = recv_blob(s, &sessLen);
+    if (!sessBlob) { printf("Failed to receive session key\n"); return 1; }
+    printf("Received encrypted session key: %lu bytes.\n", sessLen);
 
-    // ... дальше: импорт ключа, генерация сессионного, отправка (следующие шаги) ...
+    HCRYPTKEY hSessionKey = import_session_key(hProv, hKey, sessBlob, sessLen);
+    free(sessBlob);
+
+    printf("=== Secure channel established! ===\n");
+
+
+    BYTE encBuf[512];
+    DWORD encLen;
+    encrypt_message(hSessionKey, "Hello from client!", encBuf, sizeof(encBuf), &encLen);
+    send_blob(s, encBuf, encLen);
+    printf("Encrypted message sent (%lu bytes).\n", encLen);
 
     free(pubBlob);
+    CryptDestroyKey(hKey);
     CryptReleaseContext(hProv, 0);
-    closesocket(client); closesocket(listenSock); WSACleanup();
+    closesocket(s); WSACleanup();
     return 0;
 }
