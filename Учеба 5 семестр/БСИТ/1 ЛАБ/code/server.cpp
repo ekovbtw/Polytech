@@ -251,7 +251,8 @@ void get_disk_space_info(char* out, int out_size)
 
 		char root[4] = { (char)('A' + i), ':', '\\', '\0' };
 
-		if (GetDriveTypeA(root) != DRIVE_FIXED) continue;  // только локальные 
+		UINT type = GetDriveTypeA(root);
+		if (type != DRIVE_FIXED && type != DRIVE_REMOVABLE) continue; 
 
 		ULARGE_INTEGER freeBytes, totalBytes;
 		if (GetDiskFreeSpaceExA(root, &freeBytes, &totalBytes, NULL))
