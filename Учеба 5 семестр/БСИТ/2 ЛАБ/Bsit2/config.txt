@@ -1,0 +1,6 @@
+source = C:\backup_src
+dest = C:\backup_out
+archive = backup.zip
+mask = *.txt
+mask = *.docx
+mask = *.exe
