@@ -28,4 +28,20 @@ antidis_jmid PROC
     ret
 antidis_jmid ENDP
 
+PUBLIC serial_check
+PUBLIC serial_check_value
+
+serial_check PROC
+    ; cmp ecx, 3191923Fh
+    ; Эталон внутри инструкции пока закодирован XOR AA.
+    db 081h, 0F9h
+
+serial_check_value LABEL BYTE
+    db 095h, 038h, 03Bh, 09Bh
+
+    sete al
+    movzx eax, al
+    ret
+serial_check ENDP
+
 END

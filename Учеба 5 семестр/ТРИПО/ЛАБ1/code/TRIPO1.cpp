@@ -84,6 +84,8 @@ void anti_debug_4();
 __declspec(noinline) int verify_password_again(const char* input);
 extern "C" int antidis_add1(int x);
 extern "C" int antidis_jmid(int x);
+extern "C" int serial_check(unsigned int serial);
+extern "C" unsigned char serial_check_value[];
 void decrypt(const unsigned char* enc, int len, unsigned char key, char* out);
 
 void print_enc(const unsigned char* enc, int len)
@@ -590,6 +592,69 @@ __declspec(noinline) void protected_action(const char* password)
 }
 
 
+unsigned int serial_from_password(const char* password)
+{
+	unsigned int hash = 2166136261u;
+
+	for (const unsigned char* p = (const unsigned char*)password; *p != '\0'; ++p)
+	{
+		hash ^= *p;
+		hash *= 16777619u;
+	}
+
+	return hash;
+}
+
+
+int check_serial_selfmod(unsigned int serial)
+{
+	DWORD old_protect;
+	DWORD unused_protect;
+	int matched;
+
+	if (!VirtualProtect(serial_check_value, 4,
+		PAGE_EXECUTE_READWRITE, &old_protect)) // virtualprotect позволяет изменять инструкции
+	{
+		exit(20);
+	}
+
+
+	for (int i = 0; i < 4; ++i)
+	{
+		serial_check_value[i] ^= 0xAA;
+	}
+
+	if (!FlushInstructionCache(GetCurrentProcess(), // очистка кэша инструкций, чтобы процессор видел изменения в коде
+		serial_check_value, 4))
+	{
+		exit(21);
+	}
+
+
+	matched = serial_check(serial);
+
+
+	for (int i = 0; i < 4; ++i)
+	{
+		serial_check_value[i] ^= 0xAA;
+	}
+
+	if (!FlushInstructionCache(GetCurrentProcess(),
+		serial_check_value, 4))
+	{
+		exit(21);
+	}
+
+
+	if (!VirtualProtect(serial_check_value, 4,
+		old_protect, &unused_protect))
+	{
+		exit(22);
+	}
+
+	return matched;
+}
+
 int main()
 {
 	anti_debug_1();
@@ -655,18 +720,28 @@ int main()
 		else
 		{
 			
-			unsigned int base = (g_seed ^ 0x973BBC3D) - 4;
-			unsigned int serial_num = base;
-			serial_num = antidis_add1(serial_num);   
-			serial_num = antidis_jmid(serial_num);  
+			unsigned int serial_num = serial_from_password(password);
+
+			serial_num ^= (g_seed ^ 0xDEADBEEFu);
+
+			serial_num -= 4u;
+			serial_num = (unsigned int)antidis_add1((int)serial_num);
+			serial_num = (unsigned int)antidis_jmid((int)serial_num);
 	
+			if (!check_serial_selfmod(serial_num))
+			{
+				fclose(out);
+				fclose(file);
+				exit(12);
+			}
+
 			fprintf(out, "KEY$%010u$\n", serial_num);
 			fclose(out);
 		}
 
 		if ((opaque_var | 1) != 0) // непрозрачный предикат
 		{
-			print_enc(enc_correct, sizeof(enc_correct) - 1); printf("\n");
+			print_enc(enc_correct, sizeof(enc_correct) - 1); printf("\n");	
 			protected_action(password);
 		}
 		else
